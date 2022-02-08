@@ -151,6 +151,7 @@ struct Alarm new_alarm(void) {
 }
 
 bool is_alarm_unset(struct Alarm *alarm) {
+  printf("%d %d\n", alarm->pid, alarm->t_time);
   return alarm->pid == 0 && alarm->t_time == 0;
 }
 
@@ -174,7 +175,7 @@ void list(struct Alarm alarm[], int len) {
   printf("___________________________________\n");
   for (int i = 0; i < len; i++) {
     // printf("%d\n", alarm[i].pid != 0 && alarm[i].t_time != 0);
-    if (alarm[i].pid != 0 && alarm[i].t_time != 0) {
+    if (!is_alarm_unset(&alarm[i])) {
       int time = alarm[i].t_time;
       int *time_copy = malloc(sizeof &time);
       *time_copy = time;
@@ -191,7 +192,7 @@ int cancel_alarm_menu(struct Alarm alarm[], int len) {
   for (int i = 0; i < len; i++) {
     if (alarm[i].pid != 0 && alarm[i].t_time != 0) {
       char *alarm_buf = unix_timestamp_seconds_to_str(alarm[i].pid);
-      printf("Cancel alarm scheduled for %s\n", alarm_buf);
+      printf("Cancel alarm scheduled for %s (y/N)\n", alarm_buf);
       char ans = getch();
       if (strcmp(&ans, "y") == 0) {
         reset_alarm(alarm[i]);
