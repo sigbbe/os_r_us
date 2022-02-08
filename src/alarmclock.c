@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <termios.h>
 #include <time.h>
 #include <unistd.h> // for close
@@ -120,18 +121,24 @@ int press_to_continue(void) {
 }
 
 void watch_alarm(struct Alarm *alarm) {
-  printf("%d\n", alarm->pid);
-  printf("%d\n", alarm->t_time);
+  int now = unix_timestamp_now();
+  sleep(alarm->t_time - now);
+  press_to_continue();
   return;
 }
 
 void schedule(struct Alarm alarm[], int num_alarms, int new_alarm_time) {
   for (int i = 0; i < num_alarms; i++) {
     if (alarm[i].pid == 0 || alarm[i].t_time == 0) {
-      pthread_t thread_id = 1;
-      alarm[i].pid = thread_id;
-      alarm[i].t_time = new_alarm_time;
-      //   pthread_create(&thread_id, NULL, (void *)&watch_alarm, &alarm[i]);
+      int pid = fork();
+      printf("%d\n", pid);
+      if (pid != 0) {
+        alarm[i].pid = pid;
+        alarm[i].t_time = new_alarm_time;
+        printf("ALARM PID IN PARENT: %d\n", alarm[i].pid);
+      } else {
+        watch_alarm(&alarm[i]);
+      }
       return;
     }
   }
@@ -151,7 +158,6 @@ struct Alarm new_alarm(void) {
 }
 
 bool is_alarm_unset(struct Alarm *alarm) {
-  printf("%d %d\n", alarm->pid, alarm->t_time);
   return alarm->pid == 0 && alarm->t_time == 0;
 }
 
