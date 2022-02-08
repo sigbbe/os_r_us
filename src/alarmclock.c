@@ -280,7 +280,7 @@ int main(int argc, char **argv) {
     printf("%d\n", c);
     int b = kill(c, SIGALRM);
     sleep(2);
-    int a = kill(c, SIGKILL);
+    int a = kill(c, 0);
     printf("a=%d, b=%d\n", a, b);
   }
   return 0;
