@@ -1,4 +1,3 @@
-#define _XOPEN_SOURCE
 #include "../include/my_time.h"
 #include <alloca.h>
 #include <ctype.h>
@@ -14,8 +13,8 @@
 #include <termios.h>
 #include <time.h>
 #include <unistd.h> // for close
-#include <unistd.h>
 
+#define _XOPEN_SOURCE
 #define NUM_ALARMS 3
 
 typedef int bool;
@@ -125,9 +124,9 @@ int press_to_continue(void) {
 void watch_alarm(int time) {
   int now = unix_timestamp_now();
   int sleep_time = time - now;
-  printf("SLEEP FOR %d SECONDS\n", sleep_time);
+  //   printf("SLEEP FOR %d SECONDS\n", sleep_time);
   sleep(sleep_time);
-  printf("\nALARM: %s\n", unix_timestamp_seconds_to_str(time));
+  //   printf("\nALARM: %s\n", unix_timestamp_seconds_to_str(time));
   char *args[] = {"/bin/mpg123", "-q", "/home/sigbbe/Desktop/harry_maguire.mp3",
                   NULL};
   execvp("mpg123", args);
@@ -218,70 +217,60 @@ int cancel_alarm_menu(struct Alarm alarm[], int len) {
 }
 
 int main(int argc, char **argv) {
-  //   struct Alarm alarms[NUM_ALARMS];
-  //   // initialize unset alarms
-  //   for (int i = 0; i < NUM_ALARMS; i++) {
-  //     alarms[i] = new_alarm();
-  //   }
-  //   char choice;
-  //   int i = 0;
-  //   while (1) {
-  //     for (int i = 0; i < NUM_ALARMS; i++) {
-  //       printf("%d\n", (getpgid(alarms[i].pid) >= 0));
-  //       if (!(getpgid(alarms[i].pid) >= 0)) {
-  //         alarms[i] = new_alarm();
-  //       }
-  //     }
-  //     // system("clear");
-  //     welcome();
-  //     printf("> ");
-  //     int scan = scanf("%s", &choice);
-  //     choice = tolower(choice);
-  //     if (0 == strcmp(&choice, actions[SCHEDULE])) {
-  //       int new_alarm_time = schedule_alarm_menu();
-  //       schedule(alarms, NUM_ALARMS, new_alarm_time);
-  //       printf("Scheduling alarm in %ld seconds\n",
-  //              (new_alarm_time - unix_timestamp_now()));
-  //       press_to_continue();
-  //     } else if (0 == strcmp(&choice, actions[LIST])) {
-  //       list(alarms, NUM_ALARMS);
-  //       press_to_continue();
-  //       fflush(stdout);
-  //     } else if (0 == strcmp(&choice, actions[CANCEL])) {
-  //       list(alarms, NUM_ALARMS);
-  //       int remove = cancel_alarm_menu(alarms, NUM_ALARMS);
-  //       if (remove >= 0 && remove < NUM_ALARMS) {
-  //         char *tmp_alarm =
-  //         unix_timestamp_seconds_to_str(alarms[remove].t_time);
-  //         alarms[remove].pid = 0;
-  //         alarms[remove].t_time = 0;
-  //         printf("Removed alarm for %s\n", tmp_alarm);
-  //       }
-  //       press_to_continue();
-  //       fflush(stdout);
-  //     } else if (0 == strcmp(&choice, actions[EXIT]) ||
-  //                0 == strcmp(&choice, "q") || 0 == strcmp(&choice, "x")) {
-  //       //   for (int i = 0; i < NUM_ALARMS; i++) {
-  //       //     char *kill = "kill ";
-  //       //     char *pid_str;
-  //       //     sprintf(pid_str, "%d", alarms[i].pid);
-  //       //     strcat(kill, pid_str);
-  //       //     system(kill);
-  //       //   }
-  //       //   printf("\nBYE :)\n");
-  //       break;
-  //     }
-  //   }
-  int c;
-  if ((c = fork()) == 0) {
-    sleep(1);
-    printf("Child exits\n");
-  } else {
-    printf("%d\n", c);
-    int b = kill(c, SIGALRM);
-    sleep(2);
-    int a = kill(c, 0);
-    printf("a=%d, b=%d\n", a, b);
+  struct Alarm alarms[NUM_ALARMS];
+  // initialize unset alarms
+  for (int i = 0; i < NUM_ALARMS; i++) {
+    alarms[i] = new_alarm();
+  }
+  char choice;
+  int i = 0;
+  while (1) {
+    int status;
+    for (int i = 0; i < NUM_ALARMS; i++) {
+      if (0 < waitpid(alarms[i].pid, &status, WNOHANG)) {
+        alarms[i] = new_alarm();
+      }
+    }
+    // system("clear");
+    welcome();
+    printf("> ");
+    int scan = scanf("%s", &choice);
+    choice = tolower(choice);
+    if (0 == strcmp(&choice, actions[SCHEDULE])) {
+      int new_alarm_time = schedule_alarm_menu();
+      schedule(alarms, NUM_ALARMS, new_alarm_time);
+      printf("Scheduling alarm in %ld seconds\n",
+             (new_alarm_time - unix_timestamp_now()));
+      press_to_continue();
+    } else if (0 == strcmp(&choice, actions[LIST])) {
+      list(alarms, NUM_ALARMS);
+      press_to_continue();
+      fflush(stdout);
+    } else if (0 == strcmp(&choice, actions[CANCEL])) {
+      list(alarms, NUM_ALARMS);
+      int remove = cancel_alarm_menu(alarms, NUM_ALARMS);
+      if (remove >= 0 && remove < NUM_ALARMS) {
+        char *tmp_alarm = unix_timestamp_seconds_to_str(alarms[remove].t_time);
+        alarms[remove].pid = 0;
+        alarms[remove].t_time = 0;
+        printf("Removed alarm for %s\n", tmp_alarm);
+      }
+      press_to_continue();
+      fflush(stdout);
+    } else if (0 == strcmp(&choice, actions[EXIT]) ||
+               0 == strcmp(&choice, "q") || 0 == strcmp(&choice, "x")) {
+      for (int i = 0; i < NUM_ALARMS; i++) {
+        char *kill = "kill ";
+        char *pid_str;
+        sprintf(pid_str, "%d", alarms[i].pid);
+        strcat(kill, pid_str);
+        system(kill);
+      }
+      printf("\nBYE :)\n");
+      break;
+    }
   }
   return 0;
 }
+
+// gcc -std=gnu99 -Wall -g -o main src/alarmclock.c
