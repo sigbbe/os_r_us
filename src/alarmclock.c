@@ -41,7 +41,7 @@ void welcome(void) {
   char w[150];
   strcpy(w, "Welcome to the alarm clock! It is currently ");
   char t[32];
-  FILE *f = popen("date '+%Y-%m-%d %H:%M:%S'", "r");
+  FILE *f = popen("date '+%d-%m-%Y %H:%M:%S'", "r");
   fgets(t, sizeof(t), f);
   pclose(f);
   strcat(w, t);
@@ -51,72 +51,22 @@ void welcome(void) {
   return;
 }
 
-char getch() {
-  char buf = 0;
-  struct termios old = {0};
-  if (tcgetattr(0, &old) < 0)
-    perror("tcsetattr()");
-  old.c_lflag &= ~ICANON;
-  old.c_lflag &= ~ECHO;
-  old.c_cc[VMIN] = 1;
-  old.c_cc[VTIME] = 0;
-  if (tcsetattr(0, TCSANOW, &old) < 0)
-    perror("tcsetattr ICANON");
-  if (read(0, &buf, 1) < 0)
-    perror("read()");
-  old.c_lflag |= ICANON;
-  old.c_lflag |= ECHO;
-  if (tcsetattr(0, TCSADRAIN, &old) < 0)
-    perror("tcsetattr ~ICANON");
-  return (buf);
-}
-
 int i_round(int a, int b) {
   return a % b >= (b / 2) ? a + b - a % b : a - a % b;
 }
 
-long int schedule_alarm_menu() {
-  //   system("clear");
-  int c;
-  long int now = unix_timestamp_now();
-  long int time = i_round(unix_timestamp_now(), 60);
-  char buf[10];
-  date_str(time, buf);
-  printf("%s %s\n", "Schedule alarm at which date? (+/-)", buf);
-  while ((c = getch()) != '\n' && c != EOF) {
-    printf("%d\n", c);
-    if (c == 45) {
-      if (time - 86400 > now) {
-        time -= 86400;
-      }
-    } else if (c == 43) {
-      time += 86400;
-    }
-    date_str(time, buf);
-    // system("clear");
-    printf("%s %s\n", "Schedule alarm at which date? (+/-)", buf);
-  }
-  //   system("clear");
-  time_str(time, buf);
-  printf("%s %s\n", "Schedule alarm at which time? (+/-)", buf);
-  while ((c = getch()) != '\n' && c != EOF) {
-    printf("%d\n", c);
-    if (c == 45) {
-      if (time - 60 > now) {
-        time -= 60;
-      }
-    } else if (c == 43) {
-      time += 60;
-    }
-    time_str(time, buf);
-    // system("clear");
-    printf("%s %s\n", "Schedule alarm at which time? (+/-)", buf);
-  }
-  return time;
+time_t schedule_alarm_menu() {
+  char *date = malloc(32);
+  char *time = malloc(32);
+  printf("%s", "Schedule alarm (DD-MM-YYYY HH:MM:SS): ");
+  scanf("%s %s", date, time);
+  strcat(date, " ");
+  strcat(date, time);
+  return str_to_unix_timestamp_seconds(date);
 }
 
 int press_to_continue(void) {
-  printf("%s", "\n\n");
+  printf("%s", "\n");
   system("read -p 'Press Enter to continue...' var");
   return 0;
 }
@@ -124,40 +74,29 @@ int press_to_continue(void) {
 void watch_alarm(int time) {
   int now = unix_timestamp_now();
   int sleep_time = time - now;
-  //   printf("SLEEP FOR %d SECONDS\n", sleep_time);
   sleep(sleep_time);
-  //   printf("\nALARM: %s\n", unix_timestamp_seconds_to_str(time));
   char *args[] = {"/bin/mpg123", "-q", "/home/sigbbe/Desktop/harry_maguire.mp3",
                   NULL};
   execvp("mpg123", args);
   return;
 }
 
-void schedule(struct Alarm alarm[], int num_alarms, int new_alarm_time) {
+void schedule(struct Alarm alarm[], int num_alarms, long int new_alarm_time) {
   for (int i = 0; i < num_alarms; i++) {
     if (alarm[i].pid == 0 || alarm[i].t_time == 0) {
       int pid = fork();
-      //   printf("%d\n", pid);
       alarm[i].t_time = new_alarm_time;
       if (pid != 0) {
         alarm[i].pid = pid;
       } else {
         alarm[i].pid = getpid();
-        printf("CHILD PID: %d\n", getpid());
         watch_alarm(alarm[i].t_time);
       }
-      printf("Child status %d\n", pid);
       return;
     }
   }
   printf("%s\n", "Cannot create more alarms");
 }
-
-void reset_alarm(struct Alarm alarm) {
-  alarm.pid = 0;
-  alarm.t_time = 0;
-}
-
 struct Alarm new_alarm(void) {
   struct Alarm alarm;
   alarm.pid = 0;
@@ -185,8 +124,8 @@ void list(struct Alarm alarm[], int len) {
     return;
   }
   //   system("clear");
-  printf("PID\t\tAlarm\n");
-  printf("___________________________________\n");
+  printf("PID\t\tAlarm\t\t\t\tID\n");
+  printf("_________________________________________________\n");
   for (int i = 0; i < len; i++) {
     // printf("%d\n", alarm[i].pid != 0 && alarm[i].t_time != 0);
     if (!is_alarm_unset(&alarm[i])) {
@@ -197,7 +136,7 @@ void list(struct Alarm alarm[], int len) {
       date_str(alarm[i].t_time, date_buf);
       char time_buf[12];
       time_str(alarm[i].t_time, time_buf);
-      printf("%d\t\t%s %s\n", alarm[i].pid, date_buf, time_buf);
+      printf("%d\t\t%s %s\t\t%d\n", alarm[i].pid, date_buf, time_buf, i);
     }
   }
 }
@@ -212,11 +151,13 @@ int cancel_alarm_menu(struct Alarm alarm[], int len) {
       strcat(date_buf, " ");
       time_str(time, time_buf);
       strcat(date_buf, time_buf);
-      printf("\nCancel alarm scheduled for %s (y/N)", date_buf);
-
-      char ans = getch();
-      if (strcmp(&ans, "y") == 0) {
-        reset_alarm(alarm[i]);
+      date_buf[strcspn(date_buf, "\n")] = 0;
+      char ans[1];
+      printf("\nCancel alarm scheduled for %s (y/N): ", date_buf);
+      scanf(" %c", ans);
+      if (strcmp(ans, "y") == 0) {
+        kill(alarm[i].pid, SIGKILL);
+        alarm[i] = new_alarm();
       }
       free(time_buf);
       free(date_buf);
@@ -246,10 +187,10 @@ int main(int argc, char **argv) {
     int scan = scanf("%s", &choice);
     choice = tolower(choice);
     if (0 == strcmp(&choice, actions[SCHEDULE])) {
-      int new_alarm_time = schedule_alarm_menu();
+      long int new_alarm_time = schedule_alarm_menu();
       schedule(alarms, NUM_ALARMS, new_alarm_time);
-      printf("Scheduling alarm in %ld seconds\n",
-             (new_alarm_time - unix_timestamp_now()));
+      //   printf("Scheduling alarm in %ld seconds\n",
+      //          (new_alarm_time - unix_timestamp_now()));
       press_to_continue();
     } else if (0 == strcmp(&choice, actions[LIST])) {
       list(alarms, NUM_ALARMS);
@@ -273,6 +214,18 @@ int main(int argc, char **argv) {
       break;
     }
   }
+
+  //   long int new_alarm_time = schedule_alarm_menu();
+  //   char buf_1[12];
+  //   char buf_2[12];
+  //   date_str(new_alarm_time, buf_1);
+  //   time_str(new_alarm_time, buf_2);
+  //   schedule(alarms, NUM_ALARMS, new_alarm_time);
+  //   printf("Scheduling alarm in %ld seconds\n",
+  //          (new_alarm_time - unix_timestamp_now()));
+  //   long int t = str_to_unix_timestamp_seconds("15-02-2022 13:11");
+  //   printf("%ld\n", new_alarm_time);
+  //   printf("%ld\n", unix_timestamp_now());
   return 0;
 }
 
