@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE
 #include "../include/my_time.h"
 #include <alloca.h>
 #include <ctype.h>
@@ -14,7 +15,6 @@
 #include <time.h>
 #include <unistd.h> // for close
 
-#define _XOPEN_SOURCE
 #define NUM_ALARMS 3
 
 typedef int bool;
@@ -39,7 +39,7 @@ struct Alarm {
 
 void welcome(void) {
   char w[150];
-  strcpy(w, "Welcome to the alarm clock! It is currently ");
+  strcpy(w, "\nWelcome to the alarm clock! It is currently ");
   char t[32];
   FILE *f = popen("date '+%d-%m-%Y %H:%M:%S'", "r");
   fgets(t, sizeof(t), f);
@@ -172,6 +172,7 @@ int main(int argc, char **argv) {
   for (int i = 0; i < NUM_ALARMS; i++) {
     alarms[i] = new_alarm();
   }
+  welcome();
   char choice;
   int i = 0;
   while (1) {
@@ -179,34 +180,27 @@ int main(int argc, char **argv) {
     for (int i = 0; i < NUM_ALARMS; i++) {
       if (0 < waitpid(alarms[i].pid, &status, WNOHANG)) {
         alarms[i] = new_alarm();
+        // welcome();
       }
     }
     // system("clear");
-    welcome();
     printf("> ");
     int scan = scanf("%s", &choice);
     choice = tolower(choice);
     if (0 == strcmp(&choice, actions[SCHEDULE])) {
       long int new_alarm_time = schedule_alarm_menu();
       schedule(alarms, NUM_ALARMS, new_alarm_time);
-      //   printf("Scheduling alarm in %ld seconds\n",
-      //          (new_alarm_time - unix_timestamp_now()));
-      press_to_continue();
+      printf("Scheduling alarm in %ld seconds\n",
+             (new_alarm_time - unix_timestamp_now()));
+      welcome();
     } else if (0 == strcmp(&choice, actions[LIST])) {
       list(alarms, NUM_ALARMS);
-      press_to_continue();
+      welcome();
       fflush(stdout);
     } else if (0 == strcmp(&choice, actions[CANCEL])) {
       list(alarms, NUM_ALARMS);
       int remove = cancel_alarm_menu(alarms, NUM_ALARMS);
-      //   if (remove >= 0 && remove < NUM_ALARMS) {
-      //     char *tmp_alarm =
-      //     unix_timestamp_seconds_to_str(alarms[remove].t_time);
-      //     alarms[remove].pid = 0;
-      //     alarms[remove].t_time = 0;
-      //     printf("Removed alarm for %s\n", tmp_alarm);
-      //   }
-      press_to_continue();
+      welcome();
       fflush(stdout);
     } else if (0 == strcmp(&choice, actions[EXIT]) ||
                0 == strcmp(&choice, "q") || 0 == strcmp(&choice, "x")) {
@@ -214,18 +208,6 @@ int main(int argc, char **argv) {
       break;
     }
   }
-
-  //   long int new_alarm_time = schedule_alarm_menu();
-  //   char buf_1[12];
-  //   char buf_2[12];
-  //   date_str(new_alarm_time, buf_1);
-  //   time_str(new_alarm_time, buf_2);
-  //   schedule(alarms, NUM_ALARMS, new_alarm_time);
-  //   printf("Scheduling alarm in %ld seconds\n",
-  //          (new_alarm_time - unix_timestamp_now()));
-  //   long int t = str_to_unix_timestamp_seconds("15-02-2022 13:11");
-  //   printf("%ld\n", new_alarm_time);
-  //   printf("%ld\n", unix_timestamp_now());
   return 0;
 }
 
