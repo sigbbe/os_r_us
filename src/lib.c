@@ -37,11 +37,11 @@ int date_str(long int t, char buffer[]) {
   return ch;
 }
 
-long int str_to_unix_timestamp_seconds(const char *__restrict time_str) {
-  struct tm tm;
-  strptime(time_str, "%Y-%m-%d %H:%M", &tm);
-  tm.tm_isdst = 0;
-  return mktime(&tm);
+time_t str_to_unix_timestamp_seconds(const char *__restrict time_str) {
+  struct tm t;
+  char *err = strptime(time_str, "%d-%m-%Y %H:%M:%S", &t);
+  t.tm_isdst = 0;
+  return mktime(&t);
 }
 
 long int unix_timestamp_now(void) {
