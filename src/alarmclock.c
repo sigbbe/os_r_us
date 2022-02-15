@@ -204,13 +204,22 @@ void list(struct Alarm alarm[], int len) {
 
 int cancel_alarm_menu(struct Alarm alarm[], int len) {
   for (int i = 0; i < len; i++) {
-    if (alarm[i].pid != 0 && alarm[i].t_time != 0) {
-      char *alarm_buf = unix_timestamp_seconds_to_str(alarm[i].pid);
-      printf("Cancel alarm scheduled for %s (y/N)\n", alarm_buf);
+    int time = alarm[i].t_time;
+    if (alarm[i].pid != 0 && time != 0) {
+      char *date_buf = malloc(16);
+      char *time_buf = malloc(16);
+      date_str(time, date_buf);
+      strcat(date_buf, " ");
+      time_str(time, time_buf);
+      strcat(date_buf, time_buf);
+      printf("\nCancel alarm scheduled for %s (y/N)", date_buf);
+
       char ans = getch();
       if (strcmp(&ans, "y") == 0) {
         reset_alarm(alarm[i]);
       }
+      free(time_buf);
+      free(date_buf);
     }
   }
   return 0;
@@ -249,23 +258,17 @@ int main(int argc, char **argv) {
     } else if (0 == strcmp(&choice, actions[CANCEL])) {
       list(alarms, NUM_ALARMS);
       int remove = cancel_alarm_menu(alarms, NUM_ALARMS);
-      if (remove >= 0 && remove < NUM_ALARMS) {
-        char *tmp_alarm = unix_timestamp_seconds_to_str(alarms[remove].t_time);
-        alarms[remove].pid = 0;
-        alarms[remove].t_time = 0;
-        printf("Removed alarm for %s\n", tmp_alarm);
-      }
+      //   if (remove >= 0 && remove < NUM_ALARMS) {
+      //     char *tmp_alarm =
+      //     unix_timestamp_seconds_to_str(alarms[remove].t_time);
+      //     alarms[remove].pid = 0;
+      //     alarms[remove].t_time = 0;
+      //     printf("Removed alarm for %s\n", tmp_alarm);
+      //   }
       press_to_continue();
       fflush(stdout);
     } else if (0 == strcmp(&choice, actions[EXIT]) ||
                0 == strcmp(&choice, "q") || 0 == strcmp(&choice, "x")) {
-      for (int i = 0; i < NUM_ALARMS; i++) {
-        char *kill = "kill ";
-        char *pid_str;
-        sprintf(pid_str, "%d", alarms[i].pid);
-        strcat(kill, pid_str);
-        system(kill);
-      }
       printf("\nBYE :)\n");
       break;
     }
@@ -273,4 +276,4 @@ int main(int argc, char **argv) {
   return 0;
 }
 
-// gcc -std=gnu99 -Wall -g -o main src/alarmclock.c
+// gcc -std=gnu99 -o main src/lib.c src/alarmclock.c
