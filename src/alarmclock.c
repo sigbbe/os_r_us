@@ -75,6 +75,7 @@ void watch_alarm(int time) {
   int now = unix_timestamp_now();
   int sleep_time = time - now;
   sleep(sleep_time);
+  printf("\nALARM!\nALARM!\nALARM!");
   char *args[] = {"/bin/mpg123", "-q", "/home/sigbbe/Desktop/harry_maguire.mp3",
                   NULL};
   execvp("mpg123", args);
@@ -163,7 +164,9 @@ int cancel_alarm_menu(struct Alarm alarm[], int len) {
       free(date_buf);
     }
   }
+  welcome();
   return 0;
+  // Funker å slette før alarmen går, men er litt bugga etter...
 }
 
 int main(int argc, char **argv) {
