@@ -26,11 +26,15 @@ enum alarmclock_actions {
   LIST,
   CANCEL,
   EXIT,
+  HELP,
+  CLEAR,
   NO_ACTION,
 };
 
-static const char *const actions[4] = {
-    [SCHEDULE] = "s", [LIST] = "l", [CANCEL] = "c", [EXIT] = "e"};
+static const char *const actions[6] = {
+    [SCHEDULE] = "s", [LIST] = "l", [CANCEL] = "c",
+    [EXIT] = "e",     [HELP] = "h", [CLEAR] = "r",
+};
 
 struct Alarm {
   int pid;
@@ -46,7 +50,7 @@ void welcome(void) {
   pclose(f);
   strcat(w, t);
   strcat(w, "Please enter \"s\"(schedule), \"l\"(list), \"c\"(cancel), "
-            "\"x\"(exit)\n");
+            "\"e\"(exit), \"h\"(help), \"r\"(clear)\n");
   printf("%s\n", w);
   return;
 }
@@ -176,9 +180,13 @@ int main(int argc, char **argv) {
     alarms[i] = new_alarm();
   }
   welcome();
-  char choice;
   int i = 0;
   while (1) {
+    char choice;
+    // system("clear");
+    printf("> ");
+    int scan = scanf("%s", &choice);
+
     int status;
     for (int i = 0; i < NUM_ALARMS; i++) {
       if (0 < waitpid(alarms[i].pid, &status, WNOHANG)) {
@@ -186,9 +194,6 @@ int main(int argc, char **argv) {
         // welcome();
       }
     }
-    // system("clear");
-    printf("> ");
-    int scan = scanf("%s", &choice);
     choice = tolower(choice);
     if (0 == strcmp(&choice, actions[SCHEDULE])) {
       long int new_alarm_time = schedule_alarm_menu();
@@ -205,8 +210,11 @@ int main(int argc, char **argv) {
       int remove = cancel_alarm_menu(alarms, NUM_ALARMS);
       welcome();
       fflush(stdout);
-    } else if (0 == strcmp(&choice, actions[EXIT]) ||
-               0 == strcmp(&choice, "q") || 0 == strcmp(&choice, "x")) {
+    } else if (0 == strcmp(&choice, actions[HELP])) {
+      welcome();
+    } else if (0 == strcmp(&choice, actions[CLEAR])) {
+      system("clear");
+    } else if (0 == strcmp(&choice, actions[EXIT])) {
       printf("\nBYE :)\n");
       break;
     }
