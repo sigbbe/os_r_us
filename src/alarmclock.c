@@ -76,7 +76,7 @@ void watch_alarm(int time) {
   printf("\nALARM!\nALARM!\nALARM!\n\n");
   char *args[] = {"/bin/mpg123", "-q", "./harry_maguire.mp3", NULL};
   execvp(args[0], args);
-  fprintf(stderr, "Child process could play alarm sound!\n");
+  fprintf(stderr, "\nChild process could play alarm sound!\n");
   exit(1);
 }
 
@@ -209,7 +209,7 @@ int main(int argc, char **argv) {
       printf("\nBYE :)\n");
       break;
     } else {
-      break;
+      printf("Type a valid character, type 'h' for help.\n");
     }
   }
   return 0;
