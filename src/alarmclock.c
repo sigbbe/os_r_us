@@ -80,8 +80,7 @@ void watch_alarm(int time) {
   int sleep_time = time - now;
   sleep(sleep_time);
   printf("\nALARM!\nALARM!\nALARM!");
-  char *args[] = {"/bin/mpg123", "-q", "/home/sigbbe/Desktop/harry_maguire.mp3",
-                  NULL};
+  char *args[] = {"/bin/mpg123", "-q", "./harry_maguire.mp3", NULL};
   execvp("mpg123", args);
   return;
 }
@@ -163,12 +162,12 @@ int cancel_alarm_menu(struct Alarm alarm[], int len) {
       if (strcmp(ans, "y") == 0) {
         kill(alarm[i].pid, SIGKILL);
         alarm[i] = new_alarm();
+        printf("Removed alarm: %d\n", i);
       }
       free(time_buf);
       free(date_buf);
     }
   }
-  welcome();
   return 0;
   // Funker å slette før alarmen går, men er litt bugga etter...
 }
@@ -180,13 +179,17 @@ int main(int argc, char **argv) {
     alarms[i] = new_alarm();
   }
   welcome();
-  int i = 0;
+  char choice[2];
   while (1) {
-    char choice;
     // system("clear");
     printf("> ");
-    int scan = scanf("%s", &choice);
-
+    scanf(" %*[ ]");
+    // int test = scanf(" %c%*[^\n]", choice);
+    int r = scanf("%[^ \n]%*[ ]", choice);
+    if (r == 1)
+      fputs(choice, stdout);
+    else
+      continue;
     int status;
     for (int i = 0; i < NUM_ALARMS; i++) {
       if (0 < waitpid(alarms[i].pid, &status, WNOHANG)) {
@@ -194,28 +197,38 @@ int main(int argc, char **argv) {
         // welcome();
       }
     }
-    choice = tolower(choice);
-    if (0 == strcmp(&choice, actions[SCHEDULE])) {
+    char ch_choice = getchar();
+    if (isalpha(choice[0])) {
+      ch_choice = tolower(choice[0]);
+    } else if (isalpha(choice[1])) {
+      ch_choice = tolower(choice[1]);
+    } else {
+      continue;
+    }
+    printf("\"%s\"\n", &ch_choice);
+    // printf(
+    //     "%d %d %d %d %d", strcmp(&ch_choice, actions[SCHEDULE]),
+    //     strcmp(&ch_choice, actions[LIST]), strcmp(&ch_choice,
+    //     actions[CANCEL]), strcmp(&ch_choice, actions[EXIT]),
+    //     strcmp(&ch_choice, actions[HELP]));
+    if (0 == strcmp(&ch_choice, actions[SCHEDULE])) {
       long int new_alarm_time = schedule_alarm_menu();
       schedule(alarms, NUM_ALARMS, new_alarm_time);
       printf("Scheduling alarm in %ld seconds\n",
              (new_alarm_time - unix_timestamp_now()));
-      welcome();
-    } else if (0 == strcmp(&choice, actions[LIST])) {
+    } else if (0 == strcmp(&ch_choice, actions[LIST])) {
       list(alarms, NUM_ALARMS);
+    } else if (0 == strcmp(&ch_choice, actions[CANCEL])) {
+      //   list(alarms, NUM_ALARMS);
+      cancel_alarm_menu(alarms, NUM_ALARMS);
+    } else if (0 == strcmp(&ch_choice, actions[HELP])) {
       welcome();
-      fflush(stdout);
-    } else if (0 == strcmp(&choice, actions[CANCEL])) {
-      list(alarms, NUM_ALARMS);
-      int remove = cancel_alarm_menu(alarms, NUM_ALARMS);
-      welcome();
-      fflush(stdout);
-    } else if (0 == strcmp(&choice, actions[HELP])) {
-      welcome();
-    } else if (0 == strcmp(&choice, actions[CLEAR])) {
+    } else if (0 == strcmp(&ch_choice, actions[CLEAR])) {
       system("clear");
-    } else if (0 == strcmp(&choice, actions[EXIT])) {
+    } else if (0 == strcmp(&ch_choice, actions[EXIT])) {
       printf("\nBYE :)\n");
+      break;
+    } else {
       break;
     }
   }
