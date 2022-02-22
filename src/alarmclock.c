@@ -3,7 +3,7 @@
 #include <alloca.h>
 #include <ctype.h>
 #include <errno.h>
-#include <fcntl.h> // for open
+#include <fcntl.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
@@ -13,7 +13,7 @@
 #include <sys/wait.h>
 #include <termios.h>
 #include <time.h>
-#include <unistd.h> // for close
+#include <unistd.h>
 
 #define NUM_ALARMS 3
 
@@ -123,16 +123,13 @@ bool has_active_alarm(struct Alarm alarm[], int start, int end) {
 }
 
 void list(struct Alarm alarm[], int len) {
-  //   system("clear");
   if (!has_active_alarm(alarm, 0, len)) {
     printf("%s\n", "You have no active alarms");
     return;
   }
-  //   system("clear");
   printf("PID\t\tAlarm\t\t\t\tID\n");
   printf("_________________________________________________\n");
   for (int i = 0; i < len; i++) {
-    // printf("%d\n", alarm[i].pid != 0 && alarm[i].t_time != 0);
     if (!is_alarm_unset(&alarm[i])) {
       int time = alarm[i].t_time;
       int *time_copy = malloc(sizeof &time);
@@ -170,7 +167,6 @@ int cancel_alarm_menu(struct Alarm alarm[], int len) {
     }
   }
   return 0;
-  // Funker å slette før alarmen går, men er litt bugga etter...
 }
 
 int main(int argc, char **argv) {
@@ -199,13 +195,18 @@ int main(int argc, char **argv) {
     } else if (0 == strcmp(choice, actions[LIST])) {
       list(alarms, NUM_ALARMS);
     } else if (0 == strcmp(choice, actions[CANCEL])) {
-      //   list(alarms, NUM_ALARMS);
+      list(alarms, NUM_ALARMS);
       cancel_alarm_menu(alarms, NUM_ALARMS);
     } else if (0 == strcmp(choice, actions[HELP])) {
       welcome();
     } else if (0 == strcmp(choice, actions[CLEAR])) {
       system("clear");
     } else if (0 == strcmp(choice, actions[EXIT])) {
+      printf("lol");
+      for (int i; i < NUM_ALARMS; i++) {
+        printf("%d\n", alarms[i].pid);
+        kill(alarms[i].pid, SIGKILL);
+      }
       printf("\nBYE :)\n");
       break;
     } else {
@@ -216,12 +217,3 @@ int main(int argc, char **argv) {
 }
 
 // gcc -std=gnu99 -o main src/lib.c src/alarmclock.c
-
-// char *ch_choice = fgets(choice, 5, stdin);
-// printf("\"%s\"\n", ch_choice);
-// printf("\"%s\"\n", choice);
-// printf(
-//     "%d %d %d %d %d", strcmp(&ch_choice, actions[SCHEDULE]),
-//     strcmp(&ch_choice, actions[LIST]), strcmp(&ch_choice,
-//     actions[CANCEL]), strcmp(&ch_choice, actions[EXIT]),
-//     strcmp(&ch_choice, actions[HELP]));
