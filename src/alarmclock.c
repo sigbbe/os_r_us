@@ -69,17 +69,11 @@ time_t schedule_alarm_menu() {
   return str_to_unix_timestamp_seconds(date);
 }
 
-int press_to_continue(void) {
-  printf("%s", "\n");
-  system("read -p 'Press Enter to continue...' var");
-  return 0;
-}
-
 void watch_alarm(int time) {
   int now = unix_timestamp_now();
   int sleep_time = time - now;
   sleep(sleep_time);
-  printf("\nALARM!\nALARM!\nALARM!\n");
+  printf("\nALARM!\nALARM!\nALARM!\n\n");
   char *args[] = {"/bin/mpg123", "-q", "./harry_maguire.mp3", NULL};
   execvp("mpg123", args);
   return;
@@ -88,6 +82,8 @@ void watch_alarm(int time) {
 void schedule(struct Alarm alarm[], int num_alarms, long int new_alarm_time) {
   for (int i = 0; i < num_alarms; i++) {
     if (alarm[i].pid == 0 || alarm[i].t_time == 0) {
+      printf("Scheduling alarm in %ld seconds\n",
+             (new_alarm_time - unix_timestamp_now()));
       int pid = fork();
       alarm[i].t_time = new_alarm_time;
       if (pid != 0) {
@@ -183,7 +179,7 @@ int main(int argc, char **argv) {
   while (1) {
     printf("%s", "> ");
     scanf(" %*[ ]");
-    int r = scanf("%[^ \n]%*[ ]", choice);
+    scanf("%[^ \n]%*[ ]", choice);
     int status;
     for (int i = 0; i < NUM_ALARMS; i++) {
       int now = unix_timestamp_now();
@@ -192,19 +188,9 @@ int main(int argc, char **argv) {
         alarms[i] = new_alarm();
       }
     }
-    // char *ch_choice = fgets(choice, 5, stdin);
-    // printf("\"%s\"\n", ch_choice);
-    // printf("\"%s\"\n", choice);
-    // printf(
-    //     "%d %d %d %d %d", strcmp(&ch_choice, actions[SCHEDULE]),
-    //     strcmp(&ch_choice, actions[LIST]), strcmp(&ch_choice,
-    //     actions[CANCEL]), strcmp(&ch_choice, actions[EXIT]),
-    //     strcmp(&ch_choice, actions[HELP]));
     if (0 == strcmp(choice, actions[SCHEDULE])) {
       long int new_alarm_time = schedule_alarm_menu();
       schedule(alarms, NUM_ALARMS, new_alarm_time);
-      printf("Scheduling alarm in %ld seconds\n",
-             (new_alarm_time - unix_timestamp_now()));
     } else if (0 == strcmp(choice, actions[LIST])) {
       list(alarms, NUM_ALARMS);
     } else if (0 == strcmp(choice, actions[CANCEL])) {
@@ -225,3 +211,12 @@ int main(int argc, char **argv) {
 }
 
 // gcc -std=gnu99 -o main src/lib.c src/alarmclock.c
+
+// char *ch_choice = fgets(choice, 5, stdin);
+// printf("\"%s\"\n", ch_choice);
+// printf("\"%s\"\n", choice);
+// printf(
+//     "%d %d %d %d %d", strcmp(&ch_choice, actions[SCHEDULE]),
+//     strcmp(&ch_choice, actions[LIST]), strcmp(&ch_choice,
+//     actions[CANCEL]), strcmp(&ch_choice, actions[EXIT]),
+//     strcmp(&ch_choice, actions[HELP]));
