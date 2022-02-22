@@ -202,10 +202,10 @@ int main(int argc, char **argv) {
     } else if (0 == strcmp(choice, actions[CLEAR])) {
       system("clear");
     } else if (0 == strcmp(choice, actions[EXIT])) {
-      printf("lol");
       for (int i; i < NUM_ALARMS; i++) {
-        printf("%d\n", alarms[i].pid);
-        kill(alarms[i].pid, SIGKILL);
+        if (alarms[i].pid != 0) {
+          kill(alarms[i].pid, SIGKILL);
+        }
       }
       printf("\nBYE :)\n");
       break;
