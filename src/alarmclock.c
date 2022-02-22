@@ -75,8 +75,9 @@ void watch_alarm(int time) {
   sleep(sleep_time);
   printf("\nALARM!\nALARM!\nALARM!\n\n");
   char *args[] = {"/bin/mpg123", "-q", "./harry_maguire.mp3", NULL};
-  execvp("mpg123", args);
-  return;
+  execvp(args[0], args);
+  fprintf(stderr, "Child process could play alarm sound!\n");
+  exit(1);
 }
 
 void schedule(struct Alarm alarm[], int num_alarms, long int new_alarm_time) {
