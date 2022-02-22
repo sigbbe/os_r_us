@@ -79,7 +79,7 @@ void watch_alarm(int time) {
   int now = unix_timestamp_now();
   int sleep_time = time - now;
   sleep(sleep_time);
-  printf("\nALARM!\nALARM!\nALARM!");
+  printf("\nALARM!\nALARM!\nALARM!\n");
   char *args[] = {"/bin/mpg123", "-q", "./harry_maguire.mp3", NULL};
   execvp("mpg123", args);
   return;
@@ -179,53 +179,42 @@ int main(int argc, char **argv) {
     alarms[i] = new_alarm();
   }
   welcome();
-  char choice[2];
+  char choice[5];
   while (1) {
-    // system("clear");
-    printf("> ");
+    printf("%s", "> ");
     scanf(" %*[ ]");
-    // int test = scanf(" %c%*[^\n]", choice);
     int r = scanf("%[^ \n]%*[ ]", choice);
-    if (r == 1)
-      fputs(choice, stdout);
-    else
-      continue;
     int status;
     for (int i = 0; i < NUM_ALARMS; i++) {
-      if (0 < waitpid(alarms[i].pid, &status, WNOHANG)) {
+      int now = unix_timestamp_now();
+      if (0 < waitpid(alarms[i].pid, &status, WNOHANG) ||
+          alarms[i].t_time < now) {
         alarms[i] = new_alarm();
-        // welcome();
       }
     }
-    char ch_choice = getchar();
-    if (isalpha(choice[0])) {
-      ch_choice = tolower(choice[0]);
-    } else if (isalpha(choice[1])) {
-      ch_choice = tolower(choice[1]);
-    } else {
-      continue;
-    }
-    printf("\"%s\"\n", &ch_choice);
+    // char *ch_choice = fgets(choice, 5, stdin);
+    // printf("\"%s\"\n", ch_choice);
+    // printf("\"%s\"\n", choice);
     // printf(
     //     "%d %d %d %d %d", strcmp(&ch_choice, actions[SCHEDULE]),
     //     strcmp(&ch_choice, actions[LIST]), strcmp(&ch_choice,
     //     actions[CANCEL]), strcmp(&ch_choice, actions[EXIT]),
     //     strcmp(&ch_choice, actions[HELP]));
-    if (0 == strcmp(&ch_choice, actions[SCHEDULE])) {
+    if (0 == strcmp(choice, actions[SCHEDULE])) {
       long int new_alarm_time = schedule_alarm_menu();
       schedule(alarms, NUM_ALARMS, new_alarm_time);
       printf("Scheduling alarm in %ld seconds\n",
              (new_alarm_time - unix_timestamp_now()));
-    } else if (0 == strcmp(&ch_choice, actions[LIST])) {
+    } else if (0 == strcmp(choice, actions[LIST])) {
       list(alarms, NUM_ALARMS);
-    } else if (0 == strcmp(&ch_choice, actions[CANCEL])) {
+    } else if (0 == strcmp(choice, actions[CANCEL])) {
       //   list(alarms, NUM_ALARMS);
       cancel_alarm_menu(alarms, NUM_ALARMS);
-    } else if (0 == strcmp(&ch_choice, actions[HELP])) {
+    } else if (0 == strcmp(choice, actions[HELP])) {
       welcome();
-    } else if (0 == strcmp(&ch_choice, actions[CLEAR])) {
+    } else if (0 == strcmp(choice, actions[CLEAR])) {
       system("clear");
-    } else if (0 == strcmp(&ch_choice, actions[EXIT])) {
+    } else if (0 == strcmp(choice, actions[EXIT])) {
       printf("\nBYE :)\n");
       break;
     } else {
