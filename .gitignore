@@ -2,6 +2,7 @@
 *.d
 tmp/
 bin/
+main
 
 # Object files
 *.o
