@@ -80,6 +80,10 @@ void watch_alarm(int time) {
 }
 
 void schedule(struct Alarm alarm[], int num_alarms, long int new_alarm_time) {
+  if (new_alarm_time < unix_timestamp_now()) {
+    printf("\nAlarm time must be in the future!\n");
+    return;
+  }
   for (int i = 0; i < num_alarms; i++) {
     if (alarm[i].pid == 0 || alarm[i].t_time == 0) {
       printf("Scheduling alarm in %ld seconds\n",
