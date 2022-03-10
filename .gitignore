@@ -3,6 +3,9 @@
 tmp/
 bin/
 main
+p2/.clang-format
+**.vscode/
+p2/mtwwwd
 
 # Object files
 *.o
