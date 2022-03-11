@@ -3,8 +3,12 @@
 #include "../include/sem.h"
 #include "../include/server.h"
 
+#define PORT 6789
+#define MAXREQ (4096 * 1024)
+
 #define _REENTRANT
 #define _POSIX_PTHREAD_SEMANTICS
+#include <errno.h>
 #include <netdb.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -27,46 +31,75 @@ void *thread_main(void *args) {
   return NULL;
 };
 
-int *do_some() {
+int do_some() {
   // The argument sockfd is a socket that has been created with socket(2), bound
   // to a local address with bind(2), and is listening for connections after a
   // listen(2).
   //   int getaddrinfo(const char *node, const char *service,
   //                   const struct addrinfo *hints, struct addrinfo **res);
-
-  char buffer[BUFSIZ];
+  char buffer[64];
+  sprintf(buffer, "HÆLLÆ %s", "PERO");
+  char body[64];
+  char msg[64];
   char protoname[] = "tcp";
-  int i;
+  int i, n;
   int socket_fd, client_socket_fd;
   socklen_t client_len;
   struct sockaddr_in client_address, server_address;
-  unsigned short server_port = 8080u;
+  //   struct sockaddr *client_addr;
 
   socket_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (socket_fd == -1) {
-    perror("socket");
-    exit(EXIT_FAILURE);
+    printf("[SOCKET] %d: %s\n", errno, strerror(errno));
+    return 1;
   }
   server_address.sin_family = AF_INET;
   server_address.sin_addr.s_addr = htonl(INADDR_ANY);
-  server_address.sin_port = htons(server_port);
+  server_address.sin_port = htons(PORT);
   if (bind(socket_fd, (struct sockaddr *)&client_address,
            sizeof(client_address)) < 0) {
     // print the error message
-    perror("bind failed. Error");
-    return NULL;
+    printf("[BIND] %d: %s\n", errno, strerror(errno));
+    return 1;
   }
-  puts("bind done");
-  close(socket_fd);
-  //   if (bind(socket_fd, (struct sockaddr *)&server_address,
-  //            sizeof(server_address)) == -1) {
-  //     perror("bind");
-  //     exit(EXIT_FAILURE);
-  //   }
   if (listen(socket_fd, 5) == -1) {
-    perror("listen");
-    exit(EXIT_FAILURE);
+    printf("[LISTEN] %d: %s\n", errno, strerror(errno));
+    return 1;
   }
+  printf("listening on port %d\n", PORT);
+  client_socket_fd =
+      accept(socket_fd, (struct sockaddr *)&client_address, &client_len);
+  if (client_socket_fd == -1) {
+    printf("[ACCEPT] %d: %s\n", errno, strerror(errno));
+    return 1;
+  }
+  //   n = read(client_socket_fd, buffer, sizeof(buffer) - 1);
+  //   if (n < 0) {
+  //     printf("[READ] %d: %s\n", errno, strerror(errno));
+  //     return 1;
+  //   }
+  snprintf(body, sizeof(body),
+           "<html>\n<body>\n<h1>Hello web browser</h1>\nYour request "
+           "was\n<pre>%s</pre>\n</body>\n</html>\n",
+           buffer);
+
+  snprintf(msg, sizeof(msg),
+           "HTTP/1.0 200 OK\n"
+           "Content-Type: text/html\n"
+           "Content-Length: %lu\n\n%s",
+           strlen(body), body);
+  n = send(client_socket_fd, msg, strlen(msg), 0);
+  if (n < 0) {
+    printf("[HEADER] %d: %s\n", errno, strerror(errno));
+    return 1;
+  }
+  n = send(client_socket_fd, body, strlen(body), 0);
+  if (n < 0) {
+    printf("[BODY] %d: %s\n", errno, strerror(errno));
+    return 1;
+  }
+  close(client_socket_fd);
+  close(socket_fd);
   // fprintf(stderr, "listening on port %d\n", server_port);
   // int BUFFER_SIZE = 100;
   // memset(buffer, 0, BUFFER_SIZE);
@@ -80,10 +113,8 @@ int *do_some() {
   // }
   // /* Print the message we received */
   // printf("Message received: %s\n", buffer);
-  close(socket_fd);
   //   FD_CLR(socket_fd, &read_fds);
-  printf("%s\n", "do_some");
-  return NULL;
+  return 0;
 }
 
 /*
@@ -129,7 +160,8 @@ int main(int argc, char **argv, char **envp) {
   //     pthread_create(&thread, NULL, &thread_main, (void *)www_path);
   //   }
   server_t server;
-  printf("%d\n", server_listen(&server));
+  //   printf("%d\n", server_listen(&server));
+  printf("%d\n", do_some());
   return 0;
 }
 

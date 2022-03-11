@@ -52,10 +52,7 @@ struct SEM *sem_init(int initVal) {
  * In case of an error, not all resources may have been freed, but
  * nevertheless the semaphore handle must not be used any more.
  */
-int sem_del(struct SEM *sem) {
-  free(sem);
-  return 0;
-}
+int sem_del(struct SEM *sem) {}
 
 /*
  *
