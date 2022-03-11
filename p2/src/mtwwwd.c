@@ -3,12 +3,15 @@
 #include "../include/sem.h"
 #include "../include/server.h"
 
-#define PORT 6789
+#define PORT 6783
 #define MAXREQ (4096 * 1024)
+#define CRLF "\r\n"
 
 #define _REENTRANT
 #define _POSIX_PTHREAD_SEMANTICS
+#include <assert.h>
 #include <errno.h>
+#include <malloc.h>
 #include <netdb.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -31,89 +34,116 @@ void *thread_main(void *args) {
   return NULL;
 };
 
+void check_error(int code, char *format_str, int *should_run) {
+  if (code < 0) {
+    *should_run = 0;
+    fprintf(stderr, format_str, errno, strerror(errno));
+  }
+}
+
+void read_file(char *path, char buf[], int size) {
+  FILE *fp = fopen(path, "rb");
+  fseek(fp, 0, SEEK_END);
+  long fsize = ftell(fp);
+  fseek(fp, 0, SEEK_SET); /* same as rewind(f); */
+
+  fread(buf, fsize, 1, fp);
+  fclose(fp);
+  buf[fsize] = 0;
+}
+
+void extract_path(char request[], char *res) {
+  printf("sdlkføsdkfldsø");
+  char pointer[strlen(request)];
+  sprintf(pointer, "Referer: http://localhost:%u/", PORT);
+  int index_of_path = strstr(request, pointer) - request;
+  printf("%s\n", &request[index_of_path]);
+}
+
 int do_some() {
   // The argument sockfd is a socket that has been created with socket(2), bound
   // to a local address with bind(2), and is listening for connections after a
   // listen(2).
-  //   int getaddrinfo(const char *node, const char *service,
-  //                   const struct addrinfo *hints, struct addrinfo **res);
-  char buffer[64];
-  sprintf(buffer, "HÆLLÆ %s", "PERO");
-  char body[64];
-  char msg[64];
-  char protoname[] = "tcp";
-  int i, n;
-  int socket_fd, client_socket_fd;
-  socklen_t client_len;
-  struct sockaddr_in client_address, server_address;
-  //   struct sockaddr *client_addr;
 
-  socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-  if (socket_fd == -1) {
-    printf("[SOCKET] %d: %s\n", errno, strerror(errno));
-    return 1;
-  }
-  server_address.sin_family = AF_INET;
-  server_address.sin_addr.s_addr = htonl(INADDR_ANY);
-  server_address.sin_port = htons(PORT);
-  if (bind(socket_fd, (struct sockaddr *)&client_address,
-           sizeof(client_address)) < 0) {
-    // print the error message
-    printf("[BIND] %d: %s\n", errno, strerror(errno));
-    return 1;
-  }
-  if (listen(socket_fd, 5) == -1) {
-    printf("[LISTEN] %d: %s\n", errno, strerror(errno));
-    return 1;
-  }
-  printf("listening on port %d\n", PORT);
-  client_socket_fd =
-      accept(socket_fd, (struct sockaddr *)&client_address, &client_len);
-  if (client_socket_fd == -1) {
-    printf("[ACCEPT] %d: %s\n", errno, strerror(errno));
-    return 1;
-  }
-  //   n = read(client_socket_fd, buffer, sizeof(buffer) - 1);
-  //   if (n < 0) {
-  //     printf("[READ] %d: %s\n", errno, strerror(errno));
-  //     return 1;
-  //   }
-  snprintf(body, sizeof(body),
-           "<html>\n<body>\n<h1>Hello web browser</h1>\nYour request "
-           "was\n<pre>%s</pre>\n</body>\n</html>\n",
-           buffer);
+  // for checking write success
+  int should_run, write_bit, read_bit, request_counter = 0;
+  should_run = 1;
 
-  snprintf(msg, sizeof(msg),
-           "HTTP/1.0 200 OK\n"
-           "Content-Type: text/html\n"
-           "Content-Length: %lu\n\n%s",
-           strlen(body), body);
-  n = send(client_socket_fd, msg, strlen(msg), 0);
-  if (n < 0) {
-    printf("[HEADER] %d: %s\n", errno, strerror(errno));
-    return 1;
+  // file descriptors for server and client file descriptors
+  int server_sock_fd, client_sock_fd, bind_success;
+  // address of the server
+  struct sockaddr_in server_addr, client_addr;
+  // length of the address
+  socklen_t client_addr_len;
+
+  // create a socket
+  server_sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+  check_error(server_sock_fd, "[SOCKET]\t%d: %s\n", &should_run);
+
+  // why do we need to set server address to 0?
+  bzero((char *)&server_addr, sizeof(server_addr));
+  // IP protocol family
+  server_addr.sin_family = AF_INET;
+  // allow any address to connect
+  server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  // set port number
+  server_addr.sin_port = htons(PORT);
+
+  // bind the socket to the server's address
+  bind_success = bind(server_sock_fd, (struct sockaddr *)&server_addr,
+                      sizeof(server_addr));
+  check_error(bind_success, "[BIND]\t%d: %s\n", &should_run);
+
+  // allocate space for messages
+  char *buffer = malloc(MAXREQ);
+  char *body = malloc(MAXREQ);
+  char *header = malloc(MAXREQ);
+
+  char *basic_header =
+      "HTTP/1.1 200 OK\r\nContent-Type: "
+      "text/html\r\nConnection: keep-alive\r\nCache-Control: "
+      "max-age=0\r\nAccept-Encoding: gzip, deflate\r\nAccept-Language: "
+      "en,en-US;q=0.9,nb;q=0.8,no;q=0.7\r\n\r\n";
+  strcpy(header, basic_header);
+  read_file("/home/sigbbe/hackerman/os_r_us/p2/418.html", body, MAXREQ);
+  strcat(buffer, header);
+  strcat(buffer, body);
+
+  // for info
+  //   printf("listening on http://0.0.0.0:%d\n", PORT);
+  // listen for incomming connections
+  check_error(listen(server_sock_fd, 5), "[LISTEN]\t%d: %s\n", &should_run);
+
+  while (should_run) {
+    char *client_buffer = malloc(MAXREQ);
+    // request_counter += 1;
+    // printf("Number of requests: %d\n", request_counter);
+
+    client_addr_len = sizeof(client_addr);
+    // accept a connection
+    client_sock_fd = accept(server_sock_fd, (struct sockaddr *)&client_addr,
+                            &client_addr_len);
+    check_error(client_sock_fd, "[ACCEPT]\t%d: %s\n", &should_run);
+
+    // read the request
+    read_bit = read(client_sock_fd, client_buffer, MAXREQ);
+    check_error(read_bit, "[READ]\t%d: %s\n", &should_run);
+
+    // printf("%s\n", client_buffer);
+    char *path = malloc(32);
+    // extract_path(client_buffer, path);
+
+    write_bit = write(client_sock_fd, buffer, strlen(buffer));
+    check_error(write_bit, "[RESPONSE]\t%d: %s\n", &should_run);
+    close(client_sock_fd);
+    free(client_buffer);
+    free(path);
   }
-  n = send(client_socket_fd, body, strlen(body), 0);
-  if (n < 0) {
-    printf("[BODY] %d: %s\n", errno, strerror(errno));
-    return 1;
-  }
-  close(client_socket_fd);
-  close(socket_fd);
-  // fprintf(stderr, "listening on port %d\n", server_port);
-  // int BUFFER_SIZE = 100;
-  // memset(buffer, 0, BUFFER_SIZE);
-  // int n = read(socket_fd, buffer, (BUFFER_SIZE - 1));
-  // if (n == 0) {
-  //   fprintf(stderr, "Connection to client lost\n\n");
-  //   break;
-  // } else if (n < 0) {
-  //   fprintf(stderr, "Error reading from socket %s\n", strerror(1));
-  //   break;
-  // }
-  // /* Print the message we received */
-  // printf("Message received: %s\n", buffer);
-  //   FD_CLR(socket_fd, &read_fds);
+
+  close(server_sock_fd);
+  free(buffer);
+  free(body);
+  free(header);
   return 0;
 }
 
@@ -150,19 +180,7 @@ int main(int argc, char **argv, char **envp) {
   if (argc > 4) {
     bufferslots = argv[4];
   }
-  //   nthreads = atoi(threads);
-  //   nbufferslots = atoi(bufferslots);
-  //   printf("mtwwwd: starting %d threads, %d bufferslots\n", nthreads,
-  //          nbufferslots);
-  //   bb = bb_init(nbufferslots);
-  //   for (i = 0; i < nthreads; i++) {
-  //     pthread_t thread;
-  //     pthread_create(&thread, NULL, &thread_main, (void *)www_path);
-  //   }
-  server_t server;
-  //   printf("%d\n", server_listen(&server));
-  printf("%d\n", do_some());
-  return 0;
+  return do_some();
 }
 
 /*
