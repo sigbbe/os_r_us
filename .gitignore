@@ -6,7 +6,7 @@ main
 p2/.clang-format
 **.vscode/
 p2/mtwwwd
-
+**/bais
 # Object files
 *.o
 *.ko
