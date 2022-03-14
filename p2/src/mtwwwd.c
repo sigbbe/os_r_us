@@ -3,7 +3,7 @@
 #include "../include/sem.h"
 #include "../include/server.h"
 
-#define PORT 6783
+#define PORT 8000
 #define MAXREQ (4096 * 1024)
 #define CRLF "\r\n"
 
@@ -41,6 +41,29 @@ void check_error(int code, char *format_str, int *should_run) {
   }
 }
 
+int parse(const char *line, char r_path[], char r_query[]) {
+  /* Find out where everything is */
+  const char *start_of_path = strchr(line, ' ') + 1;
+  const char *start_of_query = strchr(start_of_path, '?');
+  const char *end_of_query = strchr(start_of_query, ' ');
+
+  /* Get the right amount of memory */
+  char path[start_of_query - start_of_path];
+  char query[end_of_query - start_of_query];
+
+  /* Copy the strings into our memory */
+  strncpy(path, start_of_path, start_of_query - start_of_path);
+  strncpy(query, start_of_query, end_of_query - start_of_query);
+
+  /* Null terminators (because strncpy does not provide them) */
+  path[sizeof(path)] = 0;
+  query[sizeof(query)] = 0;
+
+  //   printf("BAISELURE\n");
+  strncpy(r_path, path, sizeof(path));
+  strncpy(r_query, query, sizeof(query));
+}
+
 void read_file(char *path, char buf[], int size) {
   FILE *fp = fopen(path, "rb");
   fseek(fp, 0, SEEK_END);
@@ -50,14 +73,6 @@ void read_file(char *path, char buf[], int size) {
   fread(buf, fsize, 1, fp);
   fclose(fp);
   buf[fsize] = 0;
-}
-
-void extract_path(char request[], char *res) {
-  printf("sdlkføsdkfldsø");
-  char pointer[strlen(request)];
-  sprintf(pointer, "Referer: http://localhost:%u/", PORT);
-  int index_of_path = strstr(request, pointer) - request;
-  printf("%s\n", &request[index_of_path]);
 }
 
 int do_some() {
@@ -89,6 +104,11 @@ int do_some() {
   // set port number
   server_addr.sin_port = htons(PORT);
 
+  // enable reuse of port
+  int optval = 1;
+  setsockopt(server_sock_fd, SOCK_STREAM, SO_REUSEPORT, &optval,
+             sizeof(optval));
+
   // bind the socket to the server's address
   bind_success = bind(server_sock_fd, (struct sockaddr *)&server_addr,
                       sizeof(server_addr));
@@ -109,13 +129,18 @@ int do_some() {
   strcat(buffer, header);
   strcat(buffer, body);
 
-  // for info
-  //   printf("listening on http://0.0.0.0:%d\n", PORT);
-  // listen for incomming connections
-  check_error(listen(server_sock_fd, 5), "[LISTEN]\t%d: %s\n", &should_run);
+  if (should_run) {
+    // for info
+    printf("listening on http://0.0.0.0:%d\n", PORT);
+    // listen for incomming connections
+    check_error(listen(server_sock_fd, 5), "[LISTEN]\t%d: %s\n", &should_run);
+  }
+
+  char *client_buffer = malloc(MAXREQ);
+  char *path = malloc(32);
+  char *query = malloc(32);
 
   while (should_run) {
-    char *client_buffer = malloc(MAXREQ);
     // request_counter += 1;
     // printf("Number of requests: %d\n", request_counter);
 
@@ -128,19 +153,20 @@ int do_some() {
     // read the request
     read_bit = read(client_sock_fd, client_buffer, MAXREQ);
     check_error(read_bit, "[READ]\t%d: %s\n", &should_run);
-
-    // printf("%s\n", client_buffer);
-    char *path = malloc(32);
-    // extract_path(client_buffer, path);
+    should_run = 0;
+    char *line = NULL;
+    line = strtok(client_buffer, CRLF);
+    parse(line, path, query);
+    printf("PATH: %s\n", line);
 
     write_bit = write(client_sock_fd, buffer, strlen(buffer));
     check_error(write_bit, "[RESPONSE]\t%d: %s\n", &should_run);
     close(client_sock_fd);
-    free(client_buffer);
-    free(path);
   }
 
   close(server_sock_fd);
+
+  free(client_buffer);
   free(buffer);
   free(body);
   free(header);
