@@ -5,6 +5,8 @@
 
 #define MAXREQ (4096 * 1024)
 #define CRLF "\r\n"
+BNDBUF *bb;
+char *www_path;
 
 #define _REENTRANT
 #define _POSIX_PTHREAD_SEMANTICS
@@ -23,19 +25,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-void *thread_main(void *args) {
-  //   struct BNDBUF *bb = (struct BNDBUF *)args;
-  //   int i;
-  //   for (i = 0; i < 10; i++) {
-  //     P(bb->sem_empty);
-  //     bb->buffer[bb->in] = i;
-  //     bb->in = (bb->in + 1) % bb->size;
-  //     bb->count++;
-  //     V(bb->sem_full);
-  //   }
-  return NULL;
-};
 
 void check_error(int code, char *format_str) {
   if (code < 0) {
@@ -83,9 +72,8 @@ void read_file(char *path, char buf[]) {
   buf[fsize] = 0;
 }
 
-void setup_server(const char *port, int int_port, const char *www_path,
-                  int *server_sock_fd, struct sockaddr_in server_addr) {
-  int_port = atoi(port);
+void setup_server(const int port, const char *www_path, int *server_sock_fd,
+                  struct sockaddr_in server_addr) {
 
   // create a socket
   *server_sock_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -98,7 +86,7 @@ void setup_server(const char *port, int int_port, const char *www_path,
   // allow any address to connect
   server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
   // set port number
-  server_addr.sin_port = htons(int_port);
+  server_addr.sin_port = htons(port);
 
   // enable reuse of port
   int reuse_port = 1;
@@ -111,51 +99,33 @@ void setup_server(const char *port, int int_port, const char *www_path,
               "[BIND]\t%d: %s\n");
 
   // for info
-  printf("Serving files under %s on http://0.0.0.0:%d\n", www_path, int_port);
+  printf("Serving files under %s on http://0.0.0.0:%d\n", www_path, port);
   // listen for incomming connections
   check_error(listen(*server_sock_fd, 5), "[LISTEN]\t%d: %s\n");
 }
 
-int process_request(const char *www_path, const char *port) {
-  // The argument sockfd is a socket that has been created with socket(2), bound
-  // to a local address with bind(2), and is listening for connections after a
-  // listen(2).
+void *handle_req(void *);
 
-  // file descriptors for server and client file descriptors
-  int server_sock_fd, client_sock_fd, bind_success;
-  // address of the server
-  struct sockaddr_in server_addr, client_addr;
-  // length of the address
-  socklen_t client_addr_len;
-
-  int int_port;
-
-  setup_server(port, int_port, www_path, &server_sock_fd, server_addr);
-
-  // for checking write and read success
-  int write_bit, read_bit;
-
-  // allocate space for messages
-  char *body = malloc(MAXREQ);
-  char *header = malloc(MAXREQ);
-
-  char *basic_header =
-      "HTTP/1.1 200 OK\r\nContent-Type: "
-      "text/html\r\nConnection: keep-alive\r\nCache-Control: "
-      "max-age=0\r\nAccept-Encoding: gzip, deflate\r\nAccept-Language: "
-      "en,en-US;q=0.9,nb;q=0.8,no;q=0.7\r\n\r\n";
-  strcpy(header, basic_header);
-
-  char *client_buffer = malloc(MAXREQ);
-  char *path = malloc(128);
-  char *requested_path = malloc(128);
-
+void *handle_req(void *fd) {
   for (;;) {
-    client_addr_len = sizeof(client_addr);
-    // accept a connection
-    client_sock_fd = accept(server_sock_fd, (struct sockaddr *)&client_addr,
-                            &client_addr_len);
-    check_error(client_sock_fd, "[ACCEPT]\t%d: %s\n");
+    int client_sock_fd = bb_get(bb);
+    // for checking write and read success
+    int write_bit, read_bit, client_addr_len;
+
+    // allocate space for messages
+    char *body = malloc(MAXREQ);
+    char *header = malloc(MAXREQ);
+
+    char *basic_header =
+        "HTTP/1.1 200 OK\r\nContent-Type: "
+        "text/html\r\nConnection: keep-alive\r\nCache-Control: "
+        "max-age=0\r\nAccept-Encoding: gzip, deflate\r\nAccept-Language: "
+        "en,en-US;q=0.9,nb;q=0.8,no;q=0.7\r\n\r\n";
+    strcpy(header, basic_header);
+
+    char *client_buffer = malloc(MAXREQ);
+    char *path = malloc(128);
+    char *requested_path = malloc(128);
 
     // read the request
     read_bit = read(client_sock_fd, client_buffer, MAXREQ);
@@ -164,11 +134,11 @@ int process_request(const char *www_path, const char *port) {
     // parse the requested path from the request
     char *line = NULL;
     line = strtok(client_buffer, CRLF);
+
     parse(line, requested_path);
     requested_path = requested_path + 1;
     sprintf(path, "%s/%s", www_path, requested_path);
 
-    printf("%s\n", path);
     //   if the requested path is a valid file read it
     if (access(path, F_OK) != -1 && is_dir(path) == 0) {
       read_file(path, body);
@@ -184,14 +154,12 @@ int process_request(const char *www_path, const char *port) {
     write_bit = send(client_sock_fd, body, strlen(body), 0);
     check_error(write_bit, "[SEND BODY]\t%d: %s\n");
     close(client_sock_fd);
+
+    free(client_buffer);
+    free(body);
+    free(header);
   }
-
-  close(server_sock_fd);
-
-  free(client_buffer);
-  free(body);
-  free(header);
-  return 0;
+  return NULL;
 }
 
 /*
@@ -207,27 +175,63 @@ int process_request(const char *www_path, const char *port) {
  */
 int main(int argc, char **argv, char **envp) {
   int i;
+  int port = 8000;
   int nthreads = 1;
-  int nbufferslots = 1;
-  char *www_path = realpath(".", NULL);
-  char *port = "8000";
-  char *threads = "1";
-  char *bufferslots = "1";
-  char *tmp;
-  struct BNDBUF *bb;
+  int bufferslots = 1;
+  www_path = realpath(".", NULL);
   if (argc > 1) {
     www_path = realpath(argv[1], NULL);
   }
   if (argc > 2) {
-    port = argv[2];
+    port = atoi(argv[2]);
+    if (port < 1024) {
+      fprintf(stderr, "Port number must be greater than 1024\n");
+      exit(1);
+    }
   }
   if (argc > 3) {
-    threads = argv[3];
+    nthreads = atoi(argv[3]);
   }
   if (argc > 4) {
-    bufferslots = argv[4];
+    bufferslots = atoi(argv[4]);
   }
-  return process_request(www_path, port);
+  pthread_t threads[nthreads];
+  bb = bb_init(bufferslots);
+
+  for (i = 0; i < nthreads; i++) {
+    pthread_create(&threads[i], NULL, handle_req, NULL);
+  }
+  // file descriptors for server and client file descriptors
+  int server_sock_fd, client_sock_fd, bind_success;
+
+  // address of the server
+  struct sockaddr_in server_addr, client_addr;
+  // length of the address
+  socklen_t client_addr_len;
+
+  int int_port;
+
+  // setup the server and listen for incomming connections
+  setup_server(port, www_path, &server_sock_fd, server_addr);
+  client_addr_len = sizeof(client_addr);
+
+  for (;;) {
+    // accept a connection
+    client_sock_fd = accept(server_sock_fd, (struct sockaddr *)&client_addr,
+                            &client_addr_len);
+    check_error(client_sock_fd, "[ACCEPT]\t%d: %s\n");
+
+    // add the client socket to the buffer and let some worker thread respond to
+    // the request
+    bb_add(bb, client_sock_fd);
+  }
+  // join all threads
+  for (i = 0; i < nthreads; i++) {
+    pthread_join(threads[i], NULL);
+  }
+  close(server_sock_fd);
+  bb_del(bb);
+  return 0;
 }
 
 /*

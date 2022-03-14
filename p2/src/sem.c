@@ -1,3 +1,4 @@
+#include <stdio.h>
 #define SEM_H
 #include "../include/sem.h"
 #include <malloc.h>
@@ -30,10 +31,20 @@ struct SEM {
  * handle for the created semaphore, or NULL if an error occured.
  */
 struct SEM *sem_init(int initVal) {
+  // allocate memory for the semaphore
   struct SEM *sem = malloc(sizeof(struct SEM));
+
+  // define required members of the semaphore
   pthread_cond_t cond;
+  pthread_condattr_t attr;
+  pthread_mutex_t mutex;
+
+  // initialize the lock, condition variable and the count
+  pthread_mutex_init(&mutex, NULL);
   sem->count = initVal;
+  pthread_cond_init(&cond, &attr);
   sem->cond = cond;
+
   return sem;
 }
 
@@ -52,27 +63,34 @@ struct SEM *sem_init(int initVal) {
  * In case of an error, not all resources may have been freed, but
  * nevertheless the semaphore handle must not be used any more.
  */
-int sem_del(struct SEM *sem) {}
+int sem_del(struct SEM *sem) {
+  int i, j;
+  i = pthread_mutex_destroy(&sem->mutex);
+  j = pthread_cond_destroy(&sem->cond);
+  free(sem);
+  return (i || j) * -1;
+}
 
 /*
  *
  * P (wait) operation.
  *
- * Attempts to decrement the semaphore value by 1. If the semaphore value
- * is 0, the operation blocks until a V operation increments the value and
- * the P operation succeeds.
+ * Attempts to decrement the semaphore value by 1.
+ * If the semaphore value is 0, the operation blocks
+ * until a V operation increments the value and the P
+ * operation succeeds.
  *
  * Parameters:
  *
  * sem           handle of the semaphore to decrement
  */
 void P(struct SEM *sem) {
-  sem->count--;
-  if (sem->count < 0) {
-    pthread_mutex_lock(&sem->mutex);
+  pthread_mutex_lock(&sem->mutex);
+  while (sem->count == 0) {
     pthread_cond_wait(&sem->cond, &sem->mutex);
-    pthread_mutex_unlock(&sem->mutex);
   }
+  sem->count--;
+  pthread_mutex_unlock(&sem->mutex);
 }
 
 /*
@@ -87,10 +105,8 @@ void P(struct SEM *sem) {
  * sem           handle of the semaphore to increment
  */
 void V(struct SEM *sem) {
+  pthread_mutex_lock(&sem->mutex);
   sem->count++;
-  if (sem->count <= 0) {
-    pthread_mutex_lock(&sem->mutex);
-    pthread_cond_signal(&sem->cond);
-    pthread_mutex_unlock(&sem->mutex);
-  }
+  pthread_mutex_unlock(&sem->mutex);
+  pthread_cond_signal(&sem->cond);
 }

@@ -8,6 +8,7 @@
 
 #include "../include/bbuffer.h"
 #include "../include/sem.h"
+#include <stdio.h>
 #include <stdlib.h>
 
 /*
@@ -58,8 +59,8 @@ struct BNDBUF *bb_init(unsigned int size) {
   bb->out = 0;
   bb->count = 0;
   bb->buffer = malloc(sizeof(int) * size);
-  bb->sem_empty = sem_init(size);
-  bb->sem_full = sem_init(0);
+  bb->sem_empty = sem_init(0);
+  bb->sem_full = sem_init(size);
   return bb;
 }
 
@@ -101,7 +102,6 @@ void bb_del(struct BNDBUF *bb) {
 int bb_get(struct BNDBUF *bb) {
   int element;
   P(bb->sem_empty);
-  P(bb->sem_full);
   element = bb->buffer[bb->out];
   bb->out = (bb->out + 1) % bb->size;
   bb->count--;
@@ -128,10 +128,8 @@ int bb_get(struct BNDBUF *bb) {
  */
 void bb_add(struct BNDBUF *bb, int fd) {
   P(bb->sem_full);
-  P(bb->sem_empty);
   bb->buffer[bb->in] = fd;
   bb->in = (bb->in + 1) % bb->size;
   bb->count++;
   V(bb->sem_empty);
-  V(bb->sem_full);
 }
