@@ -1,0 +1,7 @@
+#!/bin/bash
+echo "[compiling]"
+gcc -Wimplicit-function-declaration -Wformat-truncation=0 -Wint-conversion -c src/bbuffer.c src/mtwwwd.c src/sem.c src/server.c -g
+echo "[linking]"
+gcc bbuffer.o mtwwwd.o sem.o server.o -o mtwwwd
+echo "[running]"
+./mtwwwd "$@" 
