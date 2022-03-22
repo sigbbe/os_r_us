@@ -25,13 +25,13 @@
  *
  */
 struct BNDBUF {
-    int size;
-    int in;
-    int out;
-    int count;
-    int *buffer;
-    struct SEM *sem_empty;
-    struct SEM *sem_full;
+  int size;
+  int in;
+  int out;
+  int count;
+  int *buffer;
+  struct SEM *sem_empty;
+  struct SEM *sem_full;
 };
 
 /*
