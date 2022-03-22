@@ -10,6 +10,7 @@
 static BNDBUF *bb;
 static char *www_path;
 static char *FILE_404 = "./404.html";
+static char *FILE_INDEX = "./index.html";
 
 #define _REENTRANT
 #define _POSIX_PTHREAD_SEMANTICS
@@ -86,6 +87,7 @@ void setup_server(const int port, const char *www_path, int *server_sock_fd,
   // requests
 
   // TODO: check file premisions before returning content to client
+  //   https://www.usenix.org/legacy/publications/library/proceedings/sec04/tech/full_papers/dean/dean_html/accessopen.html
 
   // create a socket
   *server_sock_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -132,7 +134,7 @@ void *handle_req(void *fd) {
     // content-type
     char *basic_header =
         "HTTP/0.9 200 OK\r\nContent-Type: "
-        "text/html\r\nConnection: keep-alive\r\nCache-Control: "
+        "text/markdown\r\nConnection: keep-alive\r\nCache-Control: "
         "max-age=0\r\nAccept-Encoding: gzip, deflate\r\nAccept-Language: "
         "en,en-US;q=0.9,nb;q=0.8,no;q=0.7\r\n\r\n";
     strcpy(header, basic_header);
@@ -153,7 +155,7 @@ void *handle_req(void *fd) {
       parse(line, requested_path);
       requested_path = requested_path + 1;
     } else {
-      *requested_path = *FILE_404;
+      *requested_path = *FILE_INDEX;
     }
 
     sprintf(path, "%s/%s", www_path, requested_path);
@@ -163,8 +165,7 @@ void *handle_req(void *fd) {
     if (access(absolute_path, F_OK) != -1 && is_dir(absolute_path) == 0) {
       int in_web_root = strncmp(www_path, absolute_path, strlen(www_path));
       int has_read_permision = open(absolute_path, S_IROTH, O_CLOEXEC);
-      printf("in_web_root=%d, has_read_permision=%d\n", in_web_root,
-             has_read_permision);
+
       if (in_web_root == 0 && has_read_permision != -1) {
         read_file(absolute_path, body);
       } else {
