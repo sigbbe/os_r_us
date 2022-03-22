@@ -74,6 +74,10 @@ void read_file(char *path, char buf[]) {
 
 void setup_server(const int port, const char *www_path, int *server_sock_fd,
                   struct sockaddr_in server_addr) {
+  // TODO: find out why the server recieves a SIGSEGV when handling HTTPS
+  // requests
+
+  // TODO: check file premisions before returning content to client
 
   // create a socket
   *server_sock_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -116,6 +120,8 @@ void *handle_req(void *fd) {
     char *body = malloc(MAXREQ);
     char *header = malloc(MAXREQ);
 
+    // TODO: get the requested file's file-extension and use that to set
+    // content-type
     char *basic_header =
         "HTTP/1.1 200 OK\r\nContent-Type: "
         "text/html\r\nConnection: keep-alive\r\nCache-Control: "
