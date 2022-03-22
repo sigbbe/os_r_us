@@ -10,7 +10,7 @@ fi
 mv *.o ./bin
 
 echo "[linking]"
-gcc ./bin/*.o -o mtwwwd
+gcc -pthread ./bin/*.o -o mtwwwd
 
 echo "[running]"
 ./mtwwwd "$@" 
