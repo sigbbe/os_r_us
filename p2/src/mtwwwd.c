@@ -134,7 +134,7 @@ void *handle_req(void *fd) {
     // content-type
     char *basic_header =
         "HTTP/0.9 200 OK\r\nContent-Type: "
-        "text/markdown\r\nConnection: keep-alive\r\nCache-Control: "
+        "text/html\r\nConnection: keep-alive\r\nCache-Control: "
         "max-age=0\r\nAccept-Encoding: gzip, deflate\r\nAccept-Language: "
         "en,en-US;q=0.9,nb;q=0.8,no;q=0.7\r\n\r\n";
     strcpy(header, basic_header);
