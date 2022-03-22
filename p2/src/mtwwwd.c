@@ -151,11 +151,22 @@ void *handle_req(void *fd) {
     char *line = NULL;
     line = strtok(client_buffer, CRLF);
 
-    if (line != NULL) {
+    // printf("----%d\n", strncmp(strchr(line, ' ') + 1, "/", 1));
+    // printf("----%s\n", strchr(line, ' ') + 1);
+
+    if (line == NULL) {
+      requested_path = FILE_INDEX;
+    } else {
       parse(line, requested_path);
       requested_path = requested_path + 1;
-    } else {
-      *requested_path = *FILE_INDEX;
+    }
+
+    if (strcmp(requested_path, "/") == 0 || strcmp(requested_path, "") == 0) {
+      //   printf("%d\n", strcmp(requested_path, ""));
+      //   printf("%s, %s\n", path, requested_path);
+      printf("slashpath\n");
+      requested_path = FILE_INDEX;
+      printf("%s\n", requested_path);
     }
 
     sprintf(path, "%s/%s", www_path, requested_path);
