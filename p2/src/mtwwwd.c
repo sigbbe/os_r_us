@@ -6,8 +6,10 @@
 #define MAXREQ (4096 * 1024)
 #define CRLF "\r\n"
 #define READ_BYTES = "rb"
-BNDBUF *bb;
-char *www_path;
+
+static BNDBUF *bb;
+static char *www_path;
+static char *FILE_404 = "./404.html";
 
 #define _REENTRANT
 #define _POSIX_PTHREAD_SEMANTICS
@@ -37,14 +39,19 @@ void check_error(int code, char *format_str) {
 void parse(const char *line, char *path) {
   /* Find out where everything is */
   char *start_of_path = strchr(line, ' ') + 1;
-  char *end_of_path;
-  if (strchr(start_of_path, '?') == NULL) {
+  char *end_of_path = strchr(start_of_path, '?');
+  if (end_of_path == NULL) {
     end_of_path = strrchr(start_of_path, ' ');
-  } else {
-    end_of_path = strchr(start_of_path, '?');
   }
+  if (start_of_path == NULL || end_of_path == NULL) {
+    strncpy(path, FILE_404, 10);
+    path[10] = '\0';
+    return;
+  }
+  //   printf("start_of_path=%s, end_of_path=%s\n", start_of_path, end_of_path);
   /* Copy the strings into our memory */
   strncpy(path, start_of_path, end_of_path - start_of_path);
+  //   printf("%s\n", "Finished strncpy");
 
   /* Null terminators (because strncpy does not provide them) */
   path[end_of_path - start_of_path] = 0;
@@ -138,25 +145,33 @@ void *handle_req(void *fd) {
     read_bit = read(client_sock_fd, client_buffer, MAXREQ);
     check_error(read_bit, "[READ]\t%d: %s\n");
 
-    printf("[REQUST]: %s\n", client_buffer);
-
     // parse the requested path from the request
     char *line = NULL;
     line = strtok(client_buffer, CRLF);
-    printf("[REQUEST]: %s\n", line);
 
-    parse(line, requested_path);
-    requested_path = requested_path + 1;
-
-    printf("[REQUESTED PATH]: %s\n", requested_path);
-    sprintf(path, "%s/%s", www_path, requested_path);
-    printf("[ACTUAL PATH]: %s\n", path);
-
-    //   if the requested path is a valid file read it
-    if (access(path, F_OK) != -1 && is_dir(path) == 0) {
-      read_file(path, body);
+    if (line != NULL) {
+      parse(line, requested_path);
+      requested_path = requested_path + 1;
     } else {
-      read_file("./404.html", body);
+      *requested_path = *FILE_404;
+    }
+
+    sprintf(path, "%s/%s", www_path, requested_path);
+
+    char *absolute_path = realpath(path, NULL);
+
+    if (access(absolute_path, F_OK) != -1 && is_dir(absolute_path) == 0) {
+      int in_web_root = strncmp(www_path, absolute_path, strlen(www_path));
+      int has_read_permision = open(absolute_path, S_IROTH, O_CLOEXEC);
+      printf("in_web_root=%d, has_read_permision=%d\n", in_web_root,
+             has_read_permision);
+      if (in_web_root == 0 && has_read_permision != -1) {
+        read_file(absolute_path, body);
+      } else {
+        read_file(FILE_404, body);
+      }
+    } else {
+      read_file(FILE_404, body);
     }
 
     // write the response
@@ -234,8 +249,8 @@ int main(int argc, char **argv, char **envp) {
                             &client_addr_len);
     check_error(client_sock_fd, "[ACCEPT]\t%d: %s\n");
 
-    // add the client socket to the buffer and let some worker thread respond to
-    // the request
+    // add the client socket to the buffer and let some worker thread
+    // respond to the request
     bb_add(bb, client_sock_fd);
   }
   // join all threads
