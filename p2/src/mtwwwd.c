@@ -1,7 +1,6 @@
 
 #include "../include/bbuffer.h"
 #include "../include/sem.h"
-#include "../include/server.h"
 
 #define MAXREQ (4096 * 1024)
 #define CRLF "\r\n"
