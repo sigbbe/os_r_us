@@ -49,10 +49,8 @@ void parse(const char *line, char *path) {
     path[10] = '\0';
     return;
   }
-  //   printf("start_of_path=%s, end_of_path=%s\n", start_of_path, end_of_path);
   /* Copy the strings into our memory */
   strncpy(path, start_of_path, end_of_path - start_of_path);
-  //   printf("%s\n", "Finished strncpy");
 
   /* Null terminators (because strncpy does not provide them) */
   path[end_of_path - start_of_path] = 0;
@@ -151,9 +149,6 @@ void *handle_req(void *fd) {
     char *line = NULL;
     line = strtok(client_buffer, CRLF);
 
-    // printf("----%d\n", strncmp(strchr(line, ' ') + 1, "/", 1));
-    // printf("----%s\n", strchr(line, ' ') + 1);
-
     if (line == NULL) {
       requested_path = FILE_INDEX;
     } else {
@@ -162,11 +157,7 @@ void *handle_req(void *fd) {
     }
 
     if (strcmp(requested_path, "/") == 0 || strcmp(requested_path, "") == 0) {
-      //   printf("%d\n", strcmp(requested_path, ""));
-      //   printf("%s, %s\n", path, requested_path);
-      printf("slashpath\n");
       requested_path = FILE_INDEX;
-      printf("%s\n", requested_path);
     }
 
     sprintf(path, "%s/%s", www_path, requested_path);
