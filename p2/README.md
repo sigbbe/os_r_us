@@ -8,11 +8,15 @@ sigbbe 35444 35430 35446 0 5 07:59 pts/1 00:00:00 ./mtwwwd /home/sigbbe/ 8000 4 
 sigbbe 35444 35430 35447 0 5 07:59 pts/1 00:00:00 ./mtwwwd /home/sigbbe/ 8000 4 6
 sigbbe 35444 35430 35448 0 5 07:59 pts/1 00:00:00 ./mtwwwd /home/sigbbe/ 8000 4 6
 
-# Invoking the program
+## Invoking the program
 
 ``` ./make ```
 
-## a) 
+## a) Web server
+
+We have a method for setting up the server, one for binding the sockets and one for 
+
+When we refactored the code to make it multithreaded, we created n-threads by calling the `pthread_create` syscall and passing in the **handle_req   
 
 ## b) Counting semaphores
 
@@ -27,13 +31,16 @@ struct SEM {
 ```
 
 The Semaphore, SEM, structure has three attribute members.
-(1) the `int count` fields to keep track of the state, if the count is less than or equal to 0, the P (wait) method will block until the V (release) method is called. (2) the `pthread_cond_t cond` field is used for calling the `pthread_cond_wait` method. (3) the `pthread_mutex_t mutex` 
+(1) the `int count` fields to keep track of the state, if the count is less than or equal to 0, the P (wait) method will block until the V (release) method is called. (2) the `pthread_cond_t cond` field is used for calling the `pthread_cond_wait` method. (3) the `pthread_mutex_t mutex` is the lock struct for locking and unlocking access to the resource protected by the semaphore. 
 
-## c)
+## c) Ring buffer
+
+
 
 
 
 ## d)
+
 
 
 ## e) 
