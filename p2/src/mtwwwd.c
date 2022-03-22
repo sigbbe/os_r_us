@@ -5,6 +5,7 @@
 
 #define MAXREQ (4096 * 1024)
 #define CRLF "\r\n"
+#define READ_BYTES = "rb"
 BNDBUF *bb;
 char *www_path;
 
@@ -123,7 +124,7 @@ void *handle_req(void *fd) {
     // TODO: get the requested file's file-extension and use that to set
     // content-type
     char *basic_header =
-        "HTTP/1.1 200 OK\r\nContent-Type: "
+        "HTTP/0.9 200 OK\r\nContent-Type: "
         "text/html\r\nConnection: keep-alive\r\nCache-Control: "
         "max-age=0\r\nAccept-Encoding: gzip, deflate\r\nAccept-Language: "
         "en,en-US;q=0.9,nb;q=0.8,no;q=0.7\r\n\r\n";
@@ -137,13 +138,19 @@ void *handle_req(void *fd) {
     read_bit = read(client_sock_fd, client_buffer, MAXREQ);
     check_error(read_bit, "[READ]\t%d: %s\n");
 
+    printf("[REQUST]: %s\n", client_buffer);
+
     // parse the requested path from the request
     char *line = NULL;
     line = strtok(client_buffer, CRLF);
+    printf("[REQUEST]: %s\n", line);
 
     parse(line, requested_path);
     requested_path = requested_path + 1;
+
+    printf("[REQUESTED PATH]: %s\n", requested_path);
     sprintf(path, "%s/%s", www_path, requested_path);
+    printf("[ACTUAL PATH]: %s\n", path);
 
     //   if the requested path is a valid file read it
     if (access(path, F_OK) != -1 && is_dir(path) == 0) {
