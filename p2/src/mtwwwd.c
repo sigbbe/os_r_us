@@ -58,21 +58,19 @@ void get_mime_type(char *filename, char mime_type[]) {
   char *extension;
 
   extension = strrchr(filename, '.');
-  extension++;
   if (extension == NULL) {
-    strcpy(mime_type, "text/plain\0");
+    strcpy(mime_type, "text/plain\n");
     return;
   }
+  extension++;
 
-  for (int i = 0; i < 31; i++) {
+  for (int i = 0; i < 30; i++) {
     if (strcmp(extension, file_extensions[i]) == 0) {
-      strcpy(mime_type, mime_types[i]);
-      mime_types[strlen(mime_types[i])] = "\0";
+      strncpy(mime_type, mime_types[i], strlen(mime_types[i]));
       return;
     }
   }
-
-  strcpy(mime_type, "text/plain\0");
+  strcpy(mime_type, "text/plain");
   return;
 }
 
@@ -157,14 +155,17 @@ void setup_server(const int port, const char *www_path, int *server_sock_fd,
 void *handle_req(void *);
 
 void *handle_req(void *fd) {
+  char *body = malloc(MAXREQ);
+  char *header = malloc(MAXREQ);
+
+  char mime_type[256];
+
   for (;;) {
     int client_sock_fd = bb_get(bb);
     // for checking write and read success
     int write_bit, read_bit, client_addr_len;
 
     // allocate space for messages
-    char *body = malloc(MAXREQ);
-    char *header = malloc(MAXREQ);
 
     char *client_buffer = malloc(MAXREQ);
     char *path = malloc(128);
@@ -205,7 +206,6 @@ void *handle_req(void *fd) {
 
       int in_web_root = strncmp(www_path, absolute_path, strlen(www_path));
       int has_read_permision = open(absolute_path, S_IROTH, O_CLOEXEC);
-      printf("%s\n", absolute_path);
 
       if (in_web_root == 0 && has_read_permision != -1) {
       load_file:
@@ -219,8 +219,6 @@ void *handle_req(void *fd) {
 
     // TODO: get the requested file's file-extension and use that to set
     // content-type
-    char content_type[10];
-    // get_mime_type(absolute_path, content_type);
     strcpy(header, "HTTP/0.9 200 OK\r\n"
                    "Content-Type: text/html\r\n"
                    "Connection: keep-alive\r\n"
@@ -228,21 +226,21 @@ void *handle_req(void *fd) {
                    "Accept-Encoding: gzip, deflate\r\n"
                    "Accept-Language: en,en-US;q=0.9,nb;q=0.8,no;q=0.7\r\n"
                    "\r\n");
-    // printf("%s\n", content_type);
 
     // write the response
     write_bit = send(client_sock_fd, header, strlen(header), 0);
     check_error(write_bit, "[SEND HEADER]\t%d: %s\n");
+    memset(header, 0, MAXREQ);
 
     // close the connection
     write_bit = send(client_sock_fd, body, strlen(body), 0);
     check_error(write_bit, "[SEND BODY]\t%d: %s\n");
     close(client_sock_fd);
-
+    memset(body, 0, MAXREQ);
     free(client_buffer);
-    free(body);
-    free(header);
   }
+  free(body);
+  free(header);
   return NULL;
 }
 
@@ -315,6 +313,7 @@ int main(int argc, char **argv, char **envp) {
   }
   close(server_sock_fd);
   bb_del(bb);
+
   return 0;
 }
 

@@ -86,7 +86,7 @@ int sem_del(struct SEM *sem) {
  */
 void P(struct SEM *sem) {
   pthread_mutex_lock(&sem->mutex);
-  while (sem->count <= 0) {
+  while (sem->count == 0) {
     pthread_cond_wait(&sem->cond, &sem->mutex);
   }
   sem->count--;
