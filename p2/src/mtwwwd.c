@@ -11,6 +11,24 @@ static char *www_path;
 static char *FILE_404 = "./404.html";
 static char *FILE_INDEX = "./index.html";
 
+static char *mime_types[30] = {
+    "application/pdf",  "text/css",        "text/csv",
+    "text/html",        "text/plain",      "text/plain",
+    "text/plain",       "text/plain",      "text/plain",
+    "text/plain",       "text/plain",      "application/javascript",
+    "application/json", "text/markdown",   "application/xml",
+    "application/xml",  "font/woff",       "font/woff2",
+    "audio/mpeg",       "audio/mpeg",      "audio/mpeg",
+    "audio/mpeg",       "video/quicktime", "video/quicktime",
+    "image/jpeg",       "image/jpeg",      "image/jpeg",
+    "image/gif"};
+
+static char *file_extensions[30] = {
+    "pdf",  "css",   "csv",  "html", "txt",  "text", "conf", "def",
+    "list", "log",   "in",   "js",   "json", "md",   "xml",  "xsl",
+    "woff", "woff2", "mpga", "mp2",  "mp2a", "mp3",  "m2a",  "m3a",
+    "qt",   "mov",   "jpeg", "jpg",  "jpe",  "gif"};
+
 #define _REENTRANT
 #define _POSIX_PTHREAD_SEMANTICS
 #include <assert.h>
@@ -34,6 +52,28 @@ void check_error(int code, char *format_str) {
     fprintf(stderr, format_str, errno, strerror(errno));
     exit(errno);
   }
+}
+
+void get_mime_type(char *filename, char mime_type[]) {
+  char *extension;
+
+  extension = strrchr(filename, '.');
+  extension++;
+  if (extension == NULL) {
+    strcpy(mime_type, "text/plain\0");
+    return;
+  }
+
+  for (int i = 0; i < 31; i++) {
+    if (strcmp(extension, file_extensions[i]) == 0) {
+      strcpy(mime_type, mime_types[i]);
+      mime_types[strlen(mime_types[i])] = "\0";
+      return;
+    }
+  }
+
+  strcpy(mime_type, "text/plain\0");
+  return;
 }
 
 void parse(const char *line, char *path) {
@@ -72,7 +112,6 @@ void read_file(char *path, char buf[]) {
   fseek(fp, 0, SEEK_END);
   long fsize = ftell(fp);
   fseek(fp, 0, SEEK_SET); /* same as rewind(f); */
-
   fread(buf, fsize, 1, fp);
   fclose(fp);
   buf[fsize] = 0;
@@ -110,7 +149,7 @@ void setup_server(const int port, const char *www_path, int *server_sock_fd,
               "[BIND]\t%d: %s\n");
 
   // for info
-  printf("Serving files under %s on http://0.0.0.0:%d\n", www_path, port);
+  printf("[SERVING] %s on http://0.0.0.0:%d\n", www_path, port);
   // listen for incomming connections
   check_error(listen(*server_sock_fd, 5), "[LISTEN]\t%d: %s\n");
 }
@@ -127,15 +166,6 @@ void *handle_req(void *fd) {
     char *body = malloc(MAXREQ);
     char *header = malloc(MAXREQ);
 
-    // TODO: get the requested file's file-extension and use that to set
-    // content-type
-    char *basic_header =
-        "HTTP/0.9 200 OK\r\nContent-Type: "
-        "text/html\r\nConnection: keep-alive\r\nCache-Control: "
-        "max-age=0\r\nAccept-Encoding: gzip, deflate\r\nAccept-Language: "
-        "en,en-US;q=0.9,nb;q=0.8,no;q=0.7\r\n\r\n";
-    strcpy(header, basic_header);
-
     char *client_buffer = malloc(MAXREQ);
     char *path = malloc(128);
     char *requested_path = malloc(128);
@@ -148,6 +178,7 @@ void *handle_req(void *fd) {
     char *line = NULL;
     line = strtok(client_buffer, CRLF);
 
+    // check that the request first line is valid
     if (line == NULL) {
       requested_path = FILE_INDEX;
     } else {
@@ -155,19 +186,29 @@ void *handle_req(void *fd) {
       requested_path = requested_path + 1;
     }
 
+    // return the index.html file if the requested path is the / path
+    char *absolute_path;
     if (strcmp(requested_path, "/") == 0 || strcmp(requested_path, "") == 0) {
-      requested_path = FILE_INDEX;
+      absolute_path = realpath(FILE_INDEX, NULL);
+      goto load_file;
+    } else {
+      sprintf(path, "%s/%s", www_path, requested_path);
+      absolute_path = realpath(path, NULL);
     }
 
-    sprintf(path, "%s/%s", www_path, requested_path);
-
-    char *absolute_path = realpath(path, NULL);
-
+    // check that the requested path is valid, the path is under the www_path
+    // and that the file has public read permissions
     if (access(absolute_path, F_OK) != -1 && is_dir(absolute_path) == 0) {
+      // FIXME: this is a critical section for a race condition,
+      // time-of-check-to-time-of-use between access(2) and open(2) syscalls
+      // https://www.usenix.org/legacy/publications/library/proceedings/sec04/tech/full_papers/dean/dean_html/accessopen.html
+
       int in_web_root = strncmp(www_path, absolute_path, strlen(www_path));
       int has_read_permision = open(absolute_path, S_IROTH, O_CLOEXEC);
+      printf("%s\n", absolute_path);
 
       if (in_web_root == 0 && has_read_permision != -1) {
+      load_file:
         read_file(absolute_path, body);
       } else {
         read_file(FILE_404, body);
@@ -175,6 +216,19 @@ void *handle_req(void *fd) {
     } else {
       read_file(FILE_404, body);
     }
+
+    // TODO: get the requested file's file-extension and use that to set
+    // content-type
+    char content_type[10];
+    // get_mime_type(absolute_path, content_type);
+    strcpy(header, "HTTP/0.9 200 OK\r\n"
+                   "Content-Type: text/html\r\n"
+                   "Connection: keep-alive\r\n"
+                   "Cache-Control: max-age=0\r\n"
+                   "Accept-Encoding: gzip, deflate\r\n"
+                   "Accept-Language: en,en-US;q=0.9,nb;q=0.8,no;q=0.7\r\n"
+                   "\r\n");
+    // printf("%s\n", content_type);
 
     // write the response
     write_bit = send(client_sock_fd, header, strlen(header), 0);

@@ -60,11 +60,11 @@ As specified in the task, the server runs by one one producer (the main thread) 
 
 ## e) Security update
 
-# Directory traversal exploit
+### Directory traversal exploit
 
 As the server is hosted locally it was not allowed to use "../" commands in the url. We had to use telnet to send request to the server to exploit the Directory traversal. By sending requests this way you could climb up the directory tree, allowing arbitrary file access in the server file system.
 
-# Implentations to prevent directory traversal
+### Implentations to prevent directory traversal
 
 We implemented validation for the web root server path. Web root server path is required to be the start of the requested url, or else you will not have access.
 

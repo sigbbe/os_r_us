@@ -1,7 +1,7 @@
 #!/bin/bash
 
-echo "[compiling]"
-gcc -Wimplicit-function-declaration -Wformat-truncation=0 -Wint-conversion -c src/*.c -g
+echo "[COMPILING]"
+gcc -g -Wimplicit-function-declaration -Wformat-truncation=0 -Wint-conversion -c src/*.c -g
 
 if [ ! -d ./bin ]; then
     mkdir bin
@@ -9,8 +9,8 @@ fi
 
 mv *.o ./bin
 
-echo "[linking]"
+echo "[LINKING]"
 gcc -pthread ./bin/*.o -o mtwwwd
 
-echo "[running]"
+echo "[RUNNING]"
 ./mtwwwd "$@" 
