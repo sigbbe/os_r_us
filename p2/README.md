@@ -8,7 +8,6 @@ _Output showing the 4 worker threads and one main thread_:
 
 `ps -eLf | less`:
 
-
 ```
 UID PID PPID LWP C NLWP STIME TTY TIME CMD
 
@@ -19,7 +18,7 @@ sigbbe 35444 35430 35447 0 5 07:59 pts/1 00:00:00 ./mtwwwd /home/sigbbe/ 8000 4 
 sigbbe 35444 35430 35448 0 5 07:59 pts/1 00:00:00 ./mtwwwd /home/sigbbe/ 8000 4 6
 ```
 
-## a)
+## a) Implementation of single-threaded server
 
 We have a method for setting up the server, one for binding the sockets and one for
 When we refactored the code to make it multithreaded, we created n-threads by calling the `pthread_create` syscall and passing in the `handle_req` method. before this the main thread handled the reading and responding of requests and responses.
