@@ -1,0 +1,16 @@
+#!/bin/bash
+
+echo "[COMPILING]"
+gcc -g -Wimplicit-function-declaration -Wformat-truncation=0 -Wint-conversion -c src/*.c -g
+
+if [ ! -d ./bin ]; then
+    mkdir bin
+fi
+
+mv *.o ./bin
+
+echo "[LINKING]"
+gcc -pthread ./bin/*.o -o flush
+
+echo "[RUNNING]"
+./flush "$@" 

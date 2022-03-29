@@ -1,0 +1,39 @@
+# Fush - Basic unix shell
+
+## Basic functionality
+
+TODO:
+
+1. [x] Current working directory followed by a colon
+2. [x] The entered text is split into command name and arguments
+3. [x] Create a new process (using fork(2))
+4. [x] Execute the entered command with the given parameters (using a variant of exec(3))
+
+## Changing directories
+
+**Why does `cd` have to be an internal shell-command?**
+
+TODO:
+
+1. [ ] Implement cd command with chdir(2).
+2. [ ] Cd command has to be internal.
+3. [ ] Empty cd commands can be ignored.
+
+## I/O redirection
+
+TODO:
+
+1. [ ]
+2. [ ] Test cases
+   1. [ ] ls > /tmp/foo
+   2. [ ] head -1 < /etc/passwd
+   3. [ ] head -1 < /etc/passwd > /tmp/foo2
+
+PROG > FILE: redirects the stdout of PROG to FILE. Overwrite FILE if it already exists.
+PROG &>FILE: redirects both the stdout and the stderr of PROG to FILE.
+
+PROG < FILE:
+
+## Background task status
+
+## Optional bonus task: Pipelines
