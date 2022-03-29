@@ -155,12 +155,12 @@ void setup_server(const int port, const char *www_path, int *server_sock_fd,
 void *handle_req(void *);
 
 void *handle_req(void *fd) {
-  char *body = malloc(MAXREQ);
-  char *header = malloc(MAXREQ);
+  char *header = malloc(1024);
 
   char mime_type[256];
 
   for (;;) {
+    char *body;
     int client_sock_fd = bb_get(bb);
     // for checking write and read success
     int write_bit, read_bit, client_addr_len;
@@ -172,7 +172,7 @@ void *handle_req(void *fd) {
     char *requested_path = malloc(128);
 
     // read the request
-    read_bit = read(client_sock_fd, client_buffer, MAXREQ);
+    read_bit = read(client_sock_fd, client_buffer, 1024);
     check_error(read_bit, "[READ]\t%d: %s\n");
 
     // parse the requested path from the request
@@ -191,7 +191,6 @@ void *handle_req(void *fd) {
     char *absolute_path;
     if (strcmp(requested_path, "/") == 0 || strcmp(requested_path, "") == 0) {
       absolute_path = realpath(FILE_INDEX, NULL);
-      goto load_file;
     } else {
       sprintf(path, "%s/%s", www_path, requested_path);
       absolute_path = realpath(path, NULL);
@@ -207,15 +206,18 @@ void *handle_req(void *fd) {
       int in_web_root = strncmp(www_path, absolute_path, strlen(www_path));
       int has_read_permision = open(absolute_path, S_IROTH, O_CLOEXEC);
 
-      if (in_web_root == 0 && has_read_permision != -1) {
-      load_file:
-        read_file(absolute_path, body);
-      } else {
-        read_file(FILE_404, body);
+      if (in_web_root != 0 || has_read_permision == -1) {
+        strcpy(absolute_path, FILE_404);
       }
     } else {
-      read_file(FILE_404, body);
+      strcpy(absolute_path, FILE_404);
     }
+    struct stat statbuf;
+    check_error(stat(absolute_path, &statbuf), "[STAT FILE]\t%d: %s\n");
+
+    body = malloc(statbuf.st_size);
+
+    read_file(absolute_path, body);
 
     // TODO: get the requested file's file-extension and use that to set
     // content-type
@@ -238,8 +240,8 @@ void *handle_req(void *fd) {
     close(client_sock_fd);
     memset(body, 0, MAXREQ);
     free(client_buffer);
+    free(body);
   }
-  free(body);
   free(header);
   return NULL;
 }
