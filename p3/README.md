@@ -13,11 +13,13 @@ TODO:
 
 **Why does `cd` have to be an internal shell-command?**
 
+The cd command must be builtin because the shell itself needs to change its _current working directory_. Changing the actual current working directory of the shell from a child process is more difficult than making the command itself built into the shell.
+
 TODO:
 
-1. [ ] Implement cd command with chdir(2).
-2. [ ] Cd command has to be internal.
-3. [ ] Empty cd commands can be ignored.
+1. [x] Implement cd command with chdir(2).
+2. [x] cd command has to be internal.
+3. [x] Empty cd commands can be ignored.
 
 ## I/O redirection
 

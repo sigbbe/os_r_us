@@ -11,6 +11,8 @@
 #define INPUT_SIZE 4096
 #define DELIM_CHARS " \t\r\n\a"
 
+static char pwd[255];
+
 /**
  * Get the current working directory as a char pointer.
  * put that in a buffer. Then append a colon :)
@@ -26,6 +28,14 @@ void get_cwd(char *buffer) {
     exit(EXIT_FAILURE);
   }
   strcat(buffer, ":");
+}
+
+void update_cwd() {
+  char *cwd = getcwd(pwd, 255);
+  if (cwd == NULL) {
+    perror("getcwd() error");
+    exit(EXIT_FAILURE);
+  }
 }
 
 /**
@@ -56,10 +66,7 @@ char **parse_args(char *line) {
   char **tokens = malloc(bufsize * sizeof(char *));
   char *token;
 
-  '
-  '
-
-      if (!tokens) {
+  if (!tokens) {
     printf("Error");
     exit(EXIT_FAILURE);
   }
@@ -137,7 +144,11 @@ int execute_command(char **args) {
   if (strcmp(args[0], "exit") == 0) {
     return 1;
   }
-  printf("%s\n", args[1]);
+
+  //   if (strcmp(args[0], "cd") == 0) {
+  //     change_directory(args[1]);
+  //     return 0;
+  //   }
   if ((strchr(*args, '<')) || (strstr(*args, ">"))) {
     printf("Invalid command %s\n", *args);
   } else {
@@ -159,17 +170,18 @@ int execute_command(char **args) {
 
 int main(int argc, char *argv[]) {
   int status = 0;
-  int n_args;
-  char *cwd = malloc(1024);
+  //   int n_args;
+  //   char *cwd = malloc(1024);
   char *line = NULL;
   char **cmd;
   while (status == 0) {
-    get_cwd(cwd);
-    printf("%s ", cwd);
+    // get_cwd(cwd);
+    update_cwd();
+    printf("%s: ", pwd);
     line = read_line(stdin);
     cmd = parse_args(line);
-    printf("---%s\n", cmd[2]);
     status = execute_command(cmd);
+    // printf("Exit status [%s] = %d\n", *cmd, status);
   }
   return 0;
 }

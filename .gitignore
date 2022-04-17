@@ -6,6 +6,8 @@ main
 p2/.clang-format
 **.vscode/
 p2/mtwwwd
+p3/flush
+
 # Object files
 *.o
 *.ko
