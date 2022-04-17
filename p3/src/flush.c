@@ -11,31 +11,40 @@
 #define INPUT_SIZE 4096
 #define DELIM_CHARS " \t\r\n\a"
 
-static char pwd[255];
+/* PROTOTYPES */
+void pipe_parse(char *input);
+void io_parse(char *input);
+void input_redir(char **cmd, char *input);
+void output_redir(char **cmd, char *output, int append_flag);
+void pipe_handler(char **pipe_args, int pipe_count);
+void io_redir(char **cmd, char *input, char *output, int append_flag);
+
+static char cwd[255];
 
 /**
- * Get the current working directory as a char pointer.
- * put that in a buffer. Then append a colon :)
- *
- * @param buffer the buffer to put the cwd in
- *
+ * update the static char array cwd with the current working directory
  */
-
-void get_cwd(char *buffer) {
-  char *cwd = getcwd(buffer, 1024);
-  if (cwd == NULL) {
+void update_cwd() {
+  char *_cwd = getcwd(cwd, 255);
+  if (_cwd == NULL) {
     perror("getcwd() error");
     exit(EXIT_FAILURE);
   }
-  strcat(buffer, ":");
 }
 
-void update_cwd() {
-  char *cwd = getcwd(pwd, 255);
-  if (cwd == NULL) {
-    perror("getcwd() error");
+/**
+ * Method that takes in a char pointer and changes working directory for the
+ * current process.
+ */
+void change_directory(const char *restrict pathname) {
+  if (pathname == NULL || strcmp(pathname, "") == 0) {
+    return;
+  }
+  if (chdir(pathname) == -1) {
+    perror("chdir() error");
     exit(EXIT_FAILURE);
   }
+  update_cwd();
 }
 
 /**
@@ -91,30 +100,6 @@ char **parse_args(char *line) {
   tokens[position] = NULL;
   return tokens;
 }
-// void parse_args(char inp[], char *args[], int *n) {
-//   int i = 0;
-//   char *token = strtok(inp, DELIM_CHARS);
-//   while (token != NULL) {
-//     args[i] = token;
-//     i++;
-//     token = strtok(NULL, DELIM_CHARS);
-//   }
-//   *n = i;
-// }
-
-/**
- * Method that takes in a char pointer and changes working directory for the
- * current process.
- */
-void change_directory(const char *restrict pathname) {
-  if (pathname == NULL || strcmp(pathname, "") == 0) {
-    return;
-  }
-  if (chdir(pathname) == -1) {
-    perror("chdir() error");
-    exit(EXIT_FAILURE);
-  }
-}
 
 int no_io_ops(char **args) {
   int status;
@@ -141,47 +126,46 @@ int no_io_ops(char **args) {
 int execute_command(char **args) {
   pid_t pid;
   int status;
+
+  // first run builtin commands
+
+  // exit
   if (strcmp(args[0], "exit") == 0) {
     return 1;
   }
 
-  //   if (strcmp(args[0], "cd") == 0) {
-  //     change_directory(args[1]);
-  //     return 0;
-  //   }
-  if ((strchr(*args, '<')) || (strstr(*args, ">"))) {
-    printf("Invalid command %s\n", *args);
-  } else {
+  // change current working directory of the shell
+  if (strcmp(args[0], "cd") == 0) {
+    change_directory(args[1]);
+    return 0;
+  }
+
+  // input redirection
+  if (strchr(*args, '<')) {
+    printf("input redirection\n");
+  } else if (strstr(*args, ">")) /* output redirection */ {
+    printf("output redirection\n");
+  } else /* all other commands */ {
     return no_io_ops(args);
   }
   return 0;
 }
 
+// https://github.com/c-birdsey/mysh
+
 /**
- * Parse the command line arguments.
- * argv[0] is the name of this program.
- * argv[1] is the name of the program that we will invoke.
- * All other argv elements are passed to the invoked program.
- *
- * @param int argc number of arguments
- * @param char **argv[] array of arguments
  *
  */
-
 int main(int argc, char *argv[]) {
   int status = 0;
-  //   int n_args;
-  //   char *cwd = malloc(1024);
   char *line = NULL;
   char **cmd;
+  update_cwd();
   while (status == 0) {
-    // get_cwd(cwd);
-    update_cwd();
-    printf("%s: ", pwd);
+    printf("%s: ", cwd);
     line = read_line(stdin);
     cmd = parse_args(line);
     status = execute_command(cmd);
-    // printf("Exit status [%s] = %d\n", *cmd, status);
   }
-  return 0;
+  return status != 0;
 }
