@@ -120,12 +120,50 @@ int no_io_ops(char **args) {
   return 0;
 }
 
+int redir(char **cmd, char *output, int append_flag) {
+  int exit_value;
+  int flags;
+  int stdout = dup(1);
+  if (append_flag == 1) {
+    flags = (O_RDWR | O_CREAT | O_APPEND);
+  } else {
+    flags = (O_RDWR | O_CREAT);
+  }
+  printf("%s\n", output);
+  int file_fd = open(output, flags, 0644);
+  if (file_fd == -1) {
+    perror("open");
+    return 0;
+  }
+  dup2(file_fd, 1);
+
+  // fork child process
+  pid_t pid;
+  pid = fork();
+  if (pid == -1) {
+    perror("fork");
+    return -1;
+  } else if (pid == 0) {
+    printf("[CMD] %s\n", *cmd);
+    execvp(cmd[0], cmd);
+    perror("execvp");
+    exit(1);
+  }
+  wait(&exit_value);
+  dup2(stdout, 1);
+  close(stdout);
+  close(file_fd);
+  return 0;
+}
+
 /**
  * Method that takes in a char pointer and executes the program.
  */
 int execute_command(char **args) {
   pid_t pid;
   int status;
+  int redir_in_flag = 0;
+  int redir_out_flag = 0;
 
   // first run builtin commands
 
@@ -140,18 +178,47 @@ int execute_command(char **args) {
     return 0;
   }
 
-  // input redirection
-  if (strchr(*args, '<')) {
-    printf("input redirection\n");
-  } else if (strstr(*args, ">")) /* output redirection */ {
-    printf("output redirection\n");
-  } else /* all other commands */ {
+  int i = 0;
+  char **ptr = args;
+  for (char *c = *ptr; c; c = *++ptr) {
+    if (strchr(c, '<'))
+      redir_in_flag = 1;
+    if (strchr(c, '>'))
+      redir_out_flag = 1;
+  }
+
+  // input and output redirection
+  if (redir_in_flag && redir_out_flag) {
+    // input redirection
+
+  } else if (redir_in_flag) {
+    printf("2\n");
+
+    // output redirection
+  } else if (redir_out_flag) {
+    redir(args, args[3], 0);
+    // all other commands
+  } else {
     return no_io_ops(args);
   }
   return 0;
 }
 
 // https://github.com/c-birdsey/mysh
+int get_char_index(char **buf, char chr) {
+  int i = 0;
+  int j = 0;
+  while (buf[i] != NULL) {
+    // printf("i: %d, j: %d, strlen(i): %ld\n", i, j, strlen(buf[i]));
+    for (int j = 0; j < strlen(buf[i]); j++) {
+      if (buf[i][j] == chr) {
+        return i;
+      }
+    }
+    i++;
+  }
+  return -1;
+}
 
 /**
  *
