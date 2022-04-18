@@ -25,7 +25,7 @@ TODO:
 
 TODO:
 
-2. [ ] Test cases
+- [ ] Test cases
    1. [ ] ls > /tmp/foo
    2. [ ] head -1 < /etc/passwd
    3. [ ] head -1 < /etc/passwd > /tmp/foo2
