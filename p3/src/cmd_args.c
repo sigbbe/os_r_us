@@ -72,7 +72,6 @@ void set_io_flag(CMDArg *args, char *arg) {
  * Setter function for io_file property of cmd_args struct
  */
 void set_io_in_file(CMDArg *args, char *file) {
-  //   (*args).io_in_file = file;
   strcpy(args->io_in_file, file);
 }
 
@@ -80,6 +79,5 @@ void set_io_in_file(CMDArg *args, char *file) {
  * Setter function for io_file2 property of cmd_args struct
  */
 void set_io_out_file(CMDArg *args, char *file) {
-  //   (*args).io_out_file = file;
   strcpy(args->io_out_file, file);
 }
