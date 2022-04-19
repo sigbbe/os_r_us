@@ -4,19 +4,23 @@
 #include "../include/linkedlist.h"
 
 struct Node {
-  int data;
-  struct Node *next;
+  pid_t pid;
+  char *name;
+  Node *next;
 };
 
-Node *createnode(int data) {
+Node *createnode(pid_t pid, char *name) {
   Node *newNode = malloc(sizeof(Node));
   if (!newNode) {
     return NULL;
   }
-  newNode->data = data;
+  newNode->pid = pid;
+  newNode->name = name;
   newNode->next = NULL;
   return newNode;
 }
+
+pid_t get_pid(Node *node) { return node->pid; }
 
 struct LinkedList {
   Node *head;
@@ -37,28 +41,28 @@ void display(LinkedList *list) {
     return;
 
   for (; current != NULL; current = current->next) {
-    printf("%d\n", current->data);
+    printf("[%d] %s\n", current->pid, current->name);
   }
 }
 
-void add(int data, LinkedList *list) {
+void add(Node *node, LinkedList *list) {
   Node *current = NULL;
   if (list->head == NULL) {
-    list->head = createnode(data);
+    list->head = createnode(node->pid, node->name);
   } else {
     current = list->head;
     while (current->next != NULL) {
       current = current->next;
     }
-    current->next = createnode(data);
+    current->next = createnode(node->pid, node->name);
   }
 }
 
-void delete (int data, LinkedList *list) {
+void delete (Node *node, LinkedList *list) {
   Node *current = list->head;
   Node *previous = current;
   while (current != NULL) {
-    if (current->data == data) {
+    if (current->pid == node->pid) {
       previous->next = current->next;
       if (current == list->head)
         list->head = current->next;
@@ -108,4 +112,12 @@ void destroy(LinkedList *list) {
     current = next;
   }
   free(list);
+}
+
+void foreach (LinkedList *list, void(fn_ptr)(Node * node)) {
+  Node *current = list->head;
+  while (current != NULL) {
+    fn_ptr(current);
+    current = current->next;
+  }
 }

@@ -25,16 +25,21 @@ TODO:
 
 TODO:
 
-- [ ] Test cases
-   1. [ ] ls > /tmp/foo
-   2. [ ] head -1 < /etc/passwd
-   3. [ ] head -1 < /etc/passwd > /tmp/foo2
+- [x] Test cases
+  1. [x] ls > /tmp/foo
+  2. [x] head -1 < /etc/passwd
+  3. [x] head -1 < /etc/passwd > /tmp/foo2
 
 PROG > FILE: redirects the stdout of PROG to FILE. Overwrite FILE if it already exists.
 PROG &>FILE: redirects both the stdout and the stderr of PROG to FILE.
 
-PROG < FILE:
-
 ## Background task status
+
+TODO:
+
+- [x] If a command line ends with the character "&"
+- [x] Linked list
+- [x] Executed as a background process
+- [ ] Program execution (not working properly yet ://)
 
 ## Optional bonus task: Pipelines
