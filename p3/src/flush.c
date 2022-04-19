@@ -35,17 +35,6 @@ void print_char_pointer_pointer(char **args) {
   return;
 }
 
-char check_op_order(char *input) {
-  int first_op;
-  for (int i = 0; i < strlen(input); i++) {
-    if (input[i] == '<' || input[i] == '>') {
-      first_op = input[i];
-      break;
-    }
-  }
-  return (char)first_op;
-}
-
 int index_of(char *input, char c) {
   char *e;
   int index;
@@ -285,9 +274,6 @@ void kill_job(Node *node) {
   }
 }
 
-/**
- *
- */
 void kill_all_jobs(void) {
   foreach (jobs, kill_job)
     ;
@@ -321,9 +307,6 @@ int execute_command(CMDArg *args) {
     // collect all background processes that have terminated (zombies) and print
     // their exit status
 
-    // WEXITSTATUS(wstatus) returns the exit status of the child process
-    // STAT_LOC
-
     for (Node *ptr = get_head(jobs); ptr != NULL; ptr = get_next(ptr)) {
       int status;
       pid_t pid = get_pid(ptr);
@@ -332,8 +315,6 @@ int execute_command(CMDArg *args) {
         del(ptr, jobs);
       }
     }
-    // Exit status [/bin/echo test] = 0
-
     // run process in the background, and add it to the jobs list
     pid_t pid = fork();
     if (pid == 0) {
@@ -495,11 +476,6 @@ void sigquit_handler(int sig) {
 int main(int argc, char *argv[]) {
   int status = 0;
 
-  //   struct passwd *p = getpwuid(getuid());
-  //   char *username = p->pw_name;
-  //   char hostname[32];
-  //   gethostname(hostname, sizeof(hostname));
-
   signal(SIGQUIT, sigquit_handler);
   parent_pid = getpid();
   jobs = makelist();
@@ -507,7 +483,6 @@ int main(int argc, char *argv[]) {
   CMDArg *cmd;
   update_cwd();
   while (status == 0) {
-    // printf("%s@%s:%s$ ", username, hostname, cwd);
     printf("%s$ ", cwd);
     line = read_line(stdin);
     if (strcmp(line, "\n") == 0) {

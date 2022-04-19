@@ -83,27 +83,3 @@ void set_io_out_file(CMDArg *args, char *file) {
   //   (*args).io_out_file = file;
   strcpy(args->io_out_file, file);
 }
-
-/**
-* Check if the last letter of the input is a '&', and start a background process
-if it is.
-// */
-// void set_background_flag(CMDArg *args) {
-//   if (args->args[args->arg_count - 1][strlen(args->args[args->arg_count - 1])
-//   - 1] == '&') {
-//     args->args[args->arg_count - 1][strlen(args->args[args->arg_count - 1]) -
-//     1] = 0; args->background_flag = 1;
-//   } else {
-//     args->background_flag = 0;
-//   }
-// } // end set_background_flag
-
-/**
- * If the inut equals "jobs" print a list of all background processes.
- */
-// void set_jobs_flag(CMDArg *args) {
-//   if (strcmp(args->args[0], "jobs") == 0) {
-//     args->jobs_flag = 1;
-//   } else {
-//     args->jobs_flag = 0;
-//   }
