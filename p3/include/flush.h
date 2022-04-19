@@ -16,17 +16,17 @@ int no_io_ops(char **args);
 /**
  * function for executing commands containing input operations)
  */
-int i_ops(char **args, char *input);
+int input_ops(char **args, char *input);
 
 /**
  * function for executing commands containing output operations)
  */
-int o_ops(char **cmd, char *output, int append_flag);
+int output_ops(char **cmd, char *output, int append_flag);
 
 /**
  * function for executing commands containing input- and output operations
  */
-int io_ops(char **args);
+int i_o_ops(char **cmd, char *input, char *output, int append_flag);
 
 /**
  * Method that takes in a char pointer and executes the program.

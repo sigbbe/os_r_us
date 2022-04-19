@@ -156,9 +156,6 @@ CMDArg *parse_args(char *line) {
 
   set_io_flag(args, line);
 
-  char **io_redir_args = malloc(INPUT_SIZE);
-  int count = 0;
-
   char *cmd_arg;
 
   // no io operations
@@ -346,8 +343,6 @@ int execute_command(CMDArg *args) {
       execvp(args->args[0], args->args);
       printf("execvp(%d) error: %s", errno, strerror(errno));
       exit(EXIT_FAILURE);
-      //   if (== -1) {
-      //   }
     } else if (pid < 0) {
       perror("fork() error");
       return EXIT_FAILURE;
@@ -360,20 +355,21 @@ int execute_command(CMDArg *args) {
   // input and output redirection
   if (args->io_flag == 2) {
     // input and output redirection
-    return 0;
+    return i_o_ops(args->args, args->io_in_file, args->io_out_file,
+                   args->append_flag);
   } else if (args->io_flag == 1) {
     // output redirection
-    return o_ops(args->args, args->io_out_file, 0);
+    return output_ops(args->args, args->io_out_file, 0);
   } else if (args->io_flag == 0) {
     // input redirection
-    return i_ops(args->args, args->io_in_file);
+    return input_ops(args->args, args->io_in_file);
   } else {
     // no io operations
     return no_io_ops(args->args);
   }
 }
 
-int o_ops(char **cmd, char *output, int append_flag) {
+int output_ops(char **cmd, char *output, int append_flag) {
   int exit_value;
   int flags;
   int stdout = dup(1);
@@ -382,14 +378,14 @@ int o_ops(char **cmd, char *output, int append_flag) {
   } else {
     flags = (O_RDWR | O_CREAT);
   }
-  printf("%s", output);
-  int file_fd = open(output, flags, 0644);
+  int file_fd = open(output, flags, 0640);
   if (file_fd == -1) {
+    printf("ERRROOOOORR\n");
     perror("open");
     return errno;
   }
+  print_char_pointer_pointer(cmd);
   dup2(file_fd, 1);
-
   // fork child process
   pid_t pid;
   pid = fork();
@@ -399,17 +395,17 @@ int o_ops(char **cmd, char *output, int append_flag) {
   } else if (pid == 0) {
     execvp(cmd[0], cmd);
     fprintf(stderr, "execvp(%d) error: %s\n", errno, strerror(errno));
-    // perror("execvp");
     exit(1);
+  } else {
+    wait(&pid);
   }
-  wait(&exit_value);
   dup2(stdout, 1);
   close(stdout);
   close(file_fd);
   return EXIT_SUCCESS;
 }
 
-int i_ops(char **args, char *input) {
+int input_ops(char **args, char *input) {
   int exit_value;
   int stdin = dup(0);
   int file_fd = open(input, O_RDONLY);
@@ -431,11 +427,63 @@ int i_ops(char **args, char *input) {
     printf("execvp(%d) error: %s", errno, strerror(errno));
     // perror("execvp");
     exit(EXIT_FAILURE);
+  } else {
+    wait(&pid);
   }
-  wait(&exit_value);
   dup2(stdin, 0);
   close(stdin);
   close(file_fd);
+  return EXIT_SUCCESS;
+}
+
+int i_o_ops(char **cmd, char *input, char *output, int append_flag) {
+  int exit_value;
+  int flags;
+
+  // set flags
+  if (append_flag == 1) {
+    flags = (O_RDWR | O_CREAT | O_APPEND);
+  } else {
+    flags = (O_RDWR | O_CREAT);
+  }
+
+  // manipulate fds
+  int stdout = dup(1);
+  int stdin = dup(0);
+  int outfile_fd = open(output, flags, 0644);
+  if (outfile_fd == -1) {
+    perror("open out");
+    return EXIT_FAILURE;
+  }
+  int infile_fd = open(input, O_RDONLY);
+  if (infile_fd == -1) {
+    perror("open in");
+    return EXIT_FAILURE;
+  }
+  dup2(infile_fd, 0);
+  dup2(outfile_fd, 1);
+
+  // fork and execute cmd
+  pid_t pid;
+  pid = fork();
+  if (pid == -1) {
+    perror("fork");
+    return EXIT_FAILURE;
+
+  } else if (pid == 0) {
+    execvp(cmd[0], cmd);
+    perror("execvp");
+    exit(1);
+  }
+  wait(&exit_value);
+
+  // clean up
+  dup2(stdin, 0);
+  dup2(stdout, 1);
+  close(stdin);
+  close(stdout);
+  close(infile_fd);
+  close(outfile_fd);
   return EXIT_SUCCESS;
 }
 
@@ -453,10 +501,10 @@ int main(int argc, char *argv[]) {
   int status = 0;
 
   // FIXME: this breaks the command buffer
-  //   struct passwd *p = getpwuid(getuid()); // Check for NULL!
-  //   char *username = p->pw_name;
-  //   char hostname[32];
-  //   gethostname(hostname, sizeof(hostname)); // Check the return value!
+  struct passwd *p = getpwuid(getuid()); // Check for NULL!
+  char *username = p->pw_name;
+  char hostname[32];
+  gethostname(hostname, sizeof(hostname)); // Check the return value!
 
   signal(SIGQUIT, sigquit_handler);
   parent_pid = getpid();
@@ -465,8 +513,8 @@ int main(int argc, char *argv[]) {
   CMDArg *cmd;
   update_cwd();
   while (status == 0) {
-    // printf("%s@%s:%s$ ", username, hostname, cwd);
-    printf("%s$ ", cwd);
+    printf("%s@%s:%s$ ", username, hostname, cwd);
+    // printf("%s$ ", cwd);
     line = read_line(stdin);
     // printf("{%s}\n", line);
     if (strcmp(line, "\n") == 0) {

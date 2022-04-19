@@ -9,8 +9,8 @@
  */
 typedef struct CMDArg {
   char **args;
-  char *io_in_file;
-  char *io_out_file;
+  char io_in_file[TOKEN_BUFSIZE];
+  char io_out_file[TOKEN_BUFSIZE];
   int io_flag;
   // io_flag = -1 => no redirect;
   // io_flag = 0 => input redirect;
