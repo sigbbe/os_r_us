@@ -280,8 +280,7 @@ void kill_job(Node *node) {
     } else if (child < 0 && errno == EINTR) {
       continue;
     } else {
-      perror("wait");
-      abort();
+      return;
     }
   }
 }
@@ -329,8 +328,6 @@ int execute_command(CMDArg *args) {
       int status;
       pid_t pid = get_pid(ptr);
       if (waitpid(pid, &status, WNOHANG) > 0) {
-        // printf("[%d]\n", pid);
-        // printf("exit status: %d\n", WEXITSTATUS(status));
         printf("Exit status [%s] = %d\n", get_name(ptr), WEXITSTATUS(status));
         del(ptr, jobs);
       }
@@ -380,8 +377,7 @@ int output_ops(char **cmd, char *output, int append_flag) {
   }
   int file_fd = open(output, flags, 0640);
   if (file_fd == -1) {
-    printf("ERRROOOOORR\n");
-    perror("open");
+    fprintf(stderr, "open(%d) error: %s\n", errno, strerror(errno));
     return errno;
   }
   print_char_pointer_pointer(cmd);
@@ -395,7 +391,7 @@ int output_ops(char **cmd, char *output, int append_flag) {
   } else if (pid == 0) {
     execvp(cmd[0], cmd);
     fprintf(stderr, "execvp(%d) error: %s\n", errno, strerror(errno));
-    exit(1);
+    exit(EXIT_FAILURE);
   } else {
     wait(&pid);
   }
@@ -425,7 +421,6 @@ int input_ops(char **args, char *input) {
   } else if (pid == 0) {
     execvp(args[0], args);
     printf("execvp(%d) error: %s", errno, strerror(errno));
-    // perror("execvp");
     exit(EXIT_FAILURE);
   } else {
     wait(&pid);
@@ -500,10 +495,10 @@ void sigquit_handler(int sig) {
 int main(int argc, char *argv[]) {
   int status = 0;
 
-  struct passwd *p = getpwuid(getuid());
-  char *username = p->pw_name;
-  char hostname[32];
-  gethostname(hostname, sizeof(hostname));
+  //   struct passwd *p = getpwuid(getuid());
+  //   char *username = p->pw_name;
+  //   char hostname[32];
+  //   gethostname(hostname, sizeof(hostname));
 
   signal(SIGQUIT, sigquit_handler);
   parent_pid = getpid();
@@ -512,7 +507,8 @@ int main(int argc, char *argv[]) {
   CMDArg *cmd;
   update_cwd();
   while (status == 0) {
-    printf("%s@%s:%s$ ", username, hostname, cwd);
+    // printf("%s@%s:%s$ ", username, hostname, cwd);
+    printf("%s$ ", cwd);
     line = read_line(stdin);
     if (strcmp(line, "\n") == 0) {
       continue;
@@ -520,8 +516,7 @@ int main(int argc, char *argv[]) {
     cmd = parse_args(line);
     status = execute_command(cmd);
   }
-  printf("STATUS=%d\n", status == EXIT_SUCCESS);
   destroy(jobs);
-
+  printf("\nbye :)\n");
   return status == EXIT_SUCCESS;
 }
