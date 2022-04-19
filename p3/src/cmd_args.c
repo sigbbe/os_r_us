@@ -3,7 +3,7 @@
 
 #include "../include/cmd_args.h"
 
-#define TOKEN_BUFSIZE 64
+#define BUF 1024
 
 /**
  * Function for initializing cmd_args struct
@@ -59,6 +59,11 @@ void set_io_flag(CMDArg *args, char *arg) {
     (*args).io_flag = 0;
   } else if (strchr(arg, '>')) {
     (*args).io_flag = 1;
+  } else if (strstr(arg, ">>")) {
+    (*args).io_flag = 0;
+    (*args).append_flag = 1;
+  } else if (strchr(arg, '|')) {
+    (*args).io_flag = 3;
   } else {
     (*args).io_flag = -1;
   }

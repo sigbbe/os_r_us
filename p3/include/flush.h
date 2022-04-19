@@ -6,6 +6,7 @@
 
 #define INPUT_SIZE 4096
 #define DELIM_CHARS " \t\r\n\a"
+#define EXIT 1
 
 /**
  * function for executing commands without any i/o operations

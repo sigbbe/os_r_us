@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -95,6 +96,11 @@ void remove_all_whitespace_chars(char str[], char *ptr) {
   }
   str[j] = '\0';
 }
+
+/**
+ * check if the given process has exited
+ */
+int process_has_exited(pid_t pid) { return (getpgid(pid) < 0); }
 
 /**
  * update the static char array cwd with the current working directory
@@ -215,19 +221,18 @@ int no_io_ops(char **args) {
   int status;
   int pid = fork();
   if (pid == 0) {
-    if (execvp(args[0], args) == -1) {
-      printf("execvp(%d) error: %s", errno, strerror(errno));
-      exit(EXIT_FAILURE);
-    }
+    execvp(args[0], args);
+    fprintf(stderr, "execvp(%d) error: %s\n", errno, strerror(errno));
+    exit(EXIT_FAILURE);
   } else if (pid < 0) {
-    perror("fork() error");
+    fprintf(stderr, "fork(%d) error: %s\n", errno, strerror(errno));
     exit(EXIT_FAILURE);
   } else {
     do {
       waitpid(pid, &status, WUNTRACED);
     } while (!WIFEXITED(status) && !WIFSIGNALED(status));
   }
-  return 0;
+  return EXIT_SUCCESS;
 }
 
 int is_background_command(char **command) {
@@ -262,16 +267,10 @@ void add_job(pid_t pid, char *name) {
   add(node, jobs);
 }
 
-void sigquit_handler(int sig) {
-  assert(sig == SIGQUIT);
-  pid_t self = getpid();
-  if (parent_pid != self) {
-    _exit(0);
-  }
-}
-
 void kill_job(Node *node) {
   pid_t pid = get_pid(node);
+
+  del(node, jobs);
 
   printf("[KILL: %d]\n", pid);
 
@@ -290,6 +289,9 @@ void kill_job(Node *node) {
   }
 }
 
+/**
+ *
+ */
 void kill_all_jobs(void) {
   foreach (jobs, kill_job)
     ;
@@ -304,7 +306,7 @@ int execute_command(CMDArg *args) {
   // exit
   if (strcmp(program, "exit") == 0) {
     kill_all_jobs();
-    return EXIT_SUCCESS;
+    return EXIT;
   }
 
   // display jobs running in the background
@@ -320,12 +322,32 @@ int execute_command(CMDArg *args) {
   }
 
   if (is_background_command(args->args)) {
+    // collect all background processes that have terminated (zombies) and print
+    // their exit status
+
+    // WEXITSTATUS(wstatus) returns the exit status of the child process
+    // STAT_LOC
+
+    for (Node *ptr = get_head(jobs); ptr != NULL; ptr = get_next(ptr)) {
+      int status;
+      pid_t pid = get_pid(ptr);
+      if (waitpid(pid, &status, WNOHANG) > 0) {
+        // printf("[%d]\n", pid);
+        // printf("exit status: %d\n", WEXITSTATUS(status));
+        printf("Exit status [%s] = %d\n", get_name(ptr), WEXITSTATUS(status));
+        del(ptr, jobs);
+      }
+    }
+    // Exit status [/bin/echo test] = 0
+
+    // run process in the background, and add it to the jobs list
     pid_t pid = fork();
     if (pid == 0) {
-      if (execvp(args->args[0], args->args) == -1) {
-        printf("execvp(%d) error: %s", errno, strerror(errno));
-        exit(EXIT_FAILURE);
-      }
+      execvp(args->args[0], args->args);
+      printf("execvp(%d) error: %s", errno, strerror(errno));
+      exit(EXIT_FAILURE);
+      //   if (== -1) {
+      //   }
     } else if (pid < 0) {
       perror("fork() error");
       return EXIT_FAILURE;
@@ -376,14 +398,15 @@ int o_ops(char **cmd, char *output, int append_flag) {
     return errno;
   } else if (pid == 0) {
     execvp(cmd[0], cmd);
-    perror("execvp");
+    fprintf(stderr, "execvp(%d) error: %s\n", errno, strerror(errno));
+    // perror("execvp");
     exit(1);
   }
   wait(&exit_value);
   dup2(stdout, 1);
   close(stdout);
   close(file_fd);
-  return 0;
+  return EXIT_SUCCESS;
 }
 
 int i_ops(char **args, char *input) {
@@ -405,20 +428,36 @@ int i_ops(char **args, char *input) {
     return 1;
   } else if (pid == 0) {
     execvp(args[0], args);
-    perror("execvp");
-    exit(1);
+    printf("execvp(%d) error: %s", errno, strerror(errno));
+    // perror("execvp");
+    exit(EXIT_FAILURE);
   }
   wait(&exit_value);
   dup2(stdin, 0);
   close(stdin);
   close(file_fd);
-  return 0;
+  return EXIT_SUCCESS;
+}
+
+// https://stackoverflow.com/questions/18433585/kill-all-child-processes-of-a-parent-but-leave-the-parent-alive#answers
+void sigquit_handler(int sig) {
+  assert(sig == SIGQUIT);
+  pid_t self = getpid();
+  if (parent_pid != self) {
+    _exit(EXIT_SUCCESS);
+  }
 }
 
 // https://github.com/c-birdsey/mysh
-
 int main(int argc, char *argv[]) {
   int status = 0;
+
+  // FIXME: this breaks the command buffer
+  //   struct passwd *p = getpwuid(getuid()); // Check for NULL!
+  //   char *username = p->pw_name;
+  //   char hostname[32];
+  //   gethostname(hostname, sizeof(hostname)); // Check the return value!
+
   signal(SIGQUIT, sigquit_handler);
   parent_pid = getpid();
   jobs = makelist();
@@ -426,11 +465,18 @@ int main(int argc, char *argv[]) {
   CMDArg *cmd;
   update_cwd();
   while (status == 0) {
-    printf("%s: ", cwd);
+    // printf("%s@%s:%s$ ", username, hostname, cwd);
+    printf("%s$ ", cwd);
     line = read_line(stdin);
+    // printf("{%s}\n", line);
+    if (strcmp(line, "\n") == 0) {
+      continue;
+    }
     cmd = parse_args(line);
     status = execute_command(cmd);
   }
-  printf("STATUS=%d\n", status == 0);
-  return status == 0;
+  printf("STATUS=%d\n", status == EXIT_SUCCESS);
+  destroy(jobs);
+
+  return status == EXIT_SUCCESS;
 }

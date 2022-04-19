@@ -16,6 +16,7 @@ typedef struct CMDArg {
   // io_flag = 0 => input redirect;
   // io_flag = 1 => output redirect;
   // io_flag = 2 => input/output redirect;
+  // io_flag = 3 => pipe;
   int append_flag;
   int arg_count;
 } CMDArg;

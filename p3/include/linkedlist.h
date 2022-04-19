@@ -13,9 +13,15 @@ Node *createnode(pid_t pid, char *name);
 
 pid_t get_pid(Node *node);
 
+char *get_name(Node *node);
+
+Node *get_next(Node *node);
+
 typedef struct LinkedList LinkedList;
 
 LinkedList *makelist();
+
+Node *get_head(LinkedList *list);
 
 void add(Node *node, LinkedList *list);
 

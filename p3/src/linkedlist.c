@@ -22,6 +22,10 @@ Node *createnode(pid_t pid, char *name) {
 
 pid_t get_pid(Node *node) { return node->pid; }
 
+char *get_name(Node *node) { return node->name; }
+
+Node *get_next(Node *node) { return node->next; }
+
 struct LinkedList {
   Node *head;
 };
@@ -34,6 +38,8 @@ LinkedList *makelist() {
   list->head = NULL;
   return list;
 }
+
+Node *get_head(LinkedList *list) { return list->head; }
 
 void display(LinkedList *list) {
   Node *current = list->head;
@@ -58,7 +64,7 @@ void add(Node *node, LinkedList *list) {
   }
 }
 
-void delete (Node *node, LinkedList *list) {
+void del(Node *node, LinkedList *list) {
   Node *current = list->head;
   Node *previous = current;
   while (current != NULL) {
