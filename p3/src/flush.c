@@ -500,11 +500,10 @@ void sigquit_handler(int sig) {
 int main(int argc, char *argv[]) {
   int status = 0;
 
-  // FIXME: this breaks the command buffer
-  struct passwd *p = getpwuid(getuid()); // Check for NULL!
+  struct passwd *p = getpwuid(getuid());
   char *username = p->pw_name;
   char hostname[32];
-  gethostname(hostname, sizeof(hostname)); // Check the return value!
+  gethostname(hostname, sizeof(hostname));
 
   signal(SIGQUIT, sigquit_handler);
   parent_pid = getpid();
@@ -514,9 +513,7 @@ int main(int argc, char *argv[]) {
   update_cwd();
   while (status == 0) {
     printf("%s@%s:%s$ ", username, hostname, cwd);
-    // printf("%s$ ", cwd);
     line = read_line(stdin);
-    // printf("{%s}\n", line);
     if (strcmp(line, "\n") == 0) {
       continue;
     }
