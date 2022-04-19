@@ -40,6 +40,5 @@ TODO:
 - [x] If a command line ends with the character "&"
 - [x] Linked list
 - [x] Executed as a background process
-- [ ] Program execution (not working properly yet ://)
 
 ## Optional bonus task: Pipelines
